@@ -67,7 +67,7 @@ std::vector<std::pair<int, int> > matchBinaryKeypoints(
 std::vector<std::pair<int, int> > matchFloatKeypoints(
     const std::vector<FloatKeypoint>& keypoints1,
     const std::vector<FloatKeypoint>& keypoints2,
-    float ratioThreshold = 0.75f)
+    float ratioThreshold = 0.75)
 {
     std::vector<std::pair<int, int> > matches;
     for (size_t i = 0; i < keypoints1.size(); ++i) {
@@ -96,7 +96,6 @@ std::vector<std::pair<int, int> > matchFloatKeypoints(
 }
 
 int main(int argc, char** argv) {
-    
     if (argc < 3) {
         std::cout << "Usage: ./matching <image1> <image2>" << std::endl;
         return -1;
@@ -109,13 +108,13 @@ int main(int argc, char** argv) {
         std::cout << "Error loading images!" << std::endl;
         return -1;
     }
-    
-    cv::Ptr<cv::SIFT> detector = cv::SIFT::create();
+
+    cv::Ptr<cv::SIFT> sift = cv::SIFT::create();
     std::vector<cv::KeyPoint> keypoints1, keypoints2;
     cv::Mat descriptors1, descriptors2;
 
-    detector->detectAndCompute(img1, cv::Mat(), keypoints1, descriptors1);
-    detector->detectAndCompute(img2, cv::Mat(), keypoints2, descriptors2);
+    sift->detectAndCompute(img1, cv::Mat(), keypoints1, descriptors1);
+    sift->detectAndCompute(img2, cv::Mat(), keypoints2, descriptors2);
 
     std::vector<FloatKeypoint> floatKeypoints1, floatKeypoints2;
     for (size_t i = 0; i < keypoints1.size(); ++i) {
@@ -137,28 +136,67 @@ int main(int argc, char** argv) {
         }
         floatKeypoints2.push_back(kp);
     }
+    float MATCH_THRESHOLD = 0.5;
+    std::vector<std::pair<int, int>> floatMatches = matchFloatKeypoints(floatKeypoints1, floatKeypoints2);
     
-    std::vector<std::pair<int, int>> matches = matchFloatKeypoints(floatKeypoints1, floatKeypoints2);
-    
-    std::cout << "Number of matches: " << matches.size() << std::endl;
-
-    const float MATCH_THRESHOLD = 0.75;
-    std::cout<<static_cast<float>(matches.size()) / floatKeypoints1.size()<<std::endl;
-    if (static_cast<float>(matches.size()) / floatKeypoints1.size() >= MATCH_THRESHOLD) {
-        std::cout << "Potentially one object detected!" << std::endl;
+    std::cout << "Float matches: " << floatMatches.size() << std::endl;
+    if (floatMatches.size() / static_cast<float>(floatKeypoints1.size()) >= MATCH_THRESHOLD) {
+        std::cout << "Potentially one object detected using float-based descriptors!" << std::endl;
     } else {
-        std::cout << "Not enough matches to confirm a single object." << std::endl;
+        std::cout << "Not enough matches to confirm a single object using float-based descriptors." << std::endl;
     }
 
-    std::vector<cv::DMatch> opencvMatches;
-    for (size_t i = 0; i < matches.size(); ++i) {
-        opencvMatches.emplace_back(cv::DMatch(matches[i].first, matches[i].second, 0));
-    }
 
-    cv::Mat imgMatches;
-    cv::drawMatches(img1, keypoints1, img2, keypoints2, opencvMatches, imgMatches);
+    // === BRISK для бінарних дескрипторів ===
+    cv::Ptr<cv::BRISK> brisk = cv::BRISK::create();
+    std::vector<cv::KeyPoint> binKeypoints1, binKeypoints2;
+    cv::Mat binDescriptors1, binDescriptors2;
+
+    brisk->detectAndCompute(img1, cv::Mat(), binKeypoints1, binDescriptors1);
+    brisk->detectAndCompute(img2, cv::Mat(), binKeypoints2, binDescriptors2);
+
+    std::vector<BinaryKeypoint> binaryKeypoints1, binaryKeypoints2;
+    for (size_t i = 0; i < binKeypoints1.size(); ++i) {
+        BinaryKeypoint kp;
+        kp.x = binKeypoints1[i].pt.x;
+        kp.y = binKeypoints1[i].pt.y;
+        kp.descriptor = binDescriptors1.at<uint32_t>(i, 0);
+        binaryKeypoints1.push_back(kp);
+    }
     
-    cv::imshow("Matched Keypoints", imgMatches);
+    for (size_t i = 0; i < binKeypoints2.size(); ++i) {
+        BinaryKeypoint kp;
+        kp.x = binKeypoints2[i].pt.x;
+        kp.y = binKeypoints2[i].pt.y;
+        kp.descriptor = binDescriptors2.at<uint32_t>(i, 0);
+        binaryKeypoints2.push_back(kp);
+    }
+
+    std::vector<std::pair<int, int>> binaryMatches = matchBinaryKeypoints(binaryKeypoints1, binaryKeypoints2);
+    
+    std::cout << "Binary matches: " << binaryMatches.size() << std::endl;
+    if (binaryMatches.size() / static_cast<float>(binaryKeypoints1.size()) >= MATCH_THRESHOLD) {
+        std::cout << "Potentially one object detected using binary descriptors!" << std::endl;
+    } else {
+        std::cout << "Not enough matches to confirm a single object using binary descriptors." << std::endl;
+    }
+
+    std::vector<cv::DMatch> floatCvMatches;
+    for (const auto& match : floatMatches) {
+        floatCvMatches.emplace_back(cv::DMatch(match.first, match.second, 0));
+    }
+    cv::Mat floatImgMatches;
+    cv::drawMatches(img1, keypoints1, img2, keypoints2, floatCvMatches, floatImgMatches);
+    cv::imshow("Float Keypoint Matches", floatImgMatches);
+
+    std::vector<cv::DMatch> binaryCvMatches;
+    for (const auto& match : binaryMatches) {
+        binaryCvMatches.emplace_back(cv::DMatch(match.first, match.second, 0));
+    }
+    cv::Mat binaryImgMatches;
+    cv::drawMatches(img1, binKeypoints1, img2, binKeypoints2, binaryCvMatches, binaryImgMatches);
+    cv::imshow("Binary Keypoint Matches", binaryImgMatches);
+
     cv::waitKey(0);
     return 0;
 }
