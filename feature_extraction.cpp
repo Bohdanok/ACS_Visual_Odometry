@@ -2,12 +2,12 @@
 // Created by julfy1 on 2/1/25.
 //
 #include <iostream>
-#include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <string>
 #include <cmath>
+#include <algorithm>
 
 class FeatureExtraction {
 
@@ -171,69 +171,137 @@ class FeatureExtraction {
 
         static auto harris_corner_detection(cv::Mat& Jx, cv::Mat& Jy, cv::Mat& Jxy, const int& n_rows, const int& n_cols, const double& k) {
 
-            std::vector<std::vector<int>> feature_array;
 
             double jx2, jy2, det, trace, R;
             // const double k = 0.07;
-            // double max_R = -DBL_MIN;
+            double max_R = -DBL_MIN; // I've seen somewhere the implementation of thresholding with t
 
             double* ptr_srcjx;
             double* ptr_srcjy;
             double* ptr_srcjxy;
 
-            for (int i = 0; i < n_rows; i++) {
+            double sumjxy;
 
-                ptr_srcjx = Jx.ptr<double>(i);
-                ptr_srcjy = Jy.ptr<double>(i);
-                ptr_srcjxy = Jxy.ptr<double>(i);
+            std::vector<std::vector<double>> R_array(n_rows, std::vector<double>(n_cols, 0));
 
-                for (int j = 0; j < n_cols; j++) {
+            // std::cout << "R_array size: "<< R_array[1].size() << std::endl;
+
+            for (int i = 2; i < n_rows - 2; i++) {
+
+                for (int j = 2; j < n_cols - 2; j++) {
 
                     // R = det(M)−k⋅(trace(M))**2
-                    jx2 = ptr_srcjx[j] * ptr_srcjx[j];
-                    jy2 = ptr_srcjy[j] * ptr_srcjy[j];
+                    sumjxy = 0;
+                    jx2 = 0, jy2 = 0;
 
-                    det = (jx2 * jy2) - (ptr_srcjxy[j] * ptr_srcjxy[j]);
+                    for (int m = -2; m <= 2; m++) {
+                        ptr_srcjx = Jx.ptr<double>(i + m);
+                        ptr_srcjy = Jy.ptr<double>(i + m);
+                        ptr_srcjxy = Jxy.ptr<double>(i + m);
+
+                        for (int n = -2; n <= 2; n++) {
+                            double jx = ptr_srcjx[j + n];
+                            double jy = ptr_srcjy[j + n];
+                            double jxy = ptr_srcjxy[j + n];
+
+                            // sumjx += jx;
+                            // sumjy += jy;
+                            sumjxy += jxy;
+
+                            jx2 += jx * jx;  // Accumulate squared Jx values
+                            jy2 += jy * jy;  // Accumulate squared Jy values
+                        }
+                    }
+
+                    det = (jx2 * jy2) - (sumjxy * sumjxy);
                     trace = jx2 + jy2;
 
                     R = det - (k * trace * trace);
                     // std::cout << "R: " << R << std::endl;
-                    // max_R = std::max(max_R, R);
-                    int check_number = 100000;
-                    if (R > check_number) {
-                        std::cout << "R > " << check_number << ": (" << i << ", " << j << ")" << std::endl;
-                        feature_array.push_back({j, i});
-                        // cv::circle(original_image, cv::Point(j, i), 0.5, cv::Scalar(0, 255, 0), 1);
-                    }
+                    max_R = std::max(max_R, R);
+
+                    R_array[i][j] = R;
+
+                    // int check_number = 1000000;
+                    // if (R > check_number) {
+                    //     std::cout << "R > " << check_number << ": (" << i << ", " << j << ")" << std::endl;
+                    //     feature_array.push_back({j, i});
+                    //     // cv::circle(original_image, cv::Point(j, i), 0.5, cv::Scalar(0, 255, 0), 1);
+                    // }
 
                 }
 
             }
 
 
-            // cv::imshow("BOHDAN GRAY", my_gray_regular);
-            // cv::imshow("BOHDAN BLURRED GRAY", my_blurred_gray);
-            // if (show_flag) {
-            //
-            //     cv::imshow("BOHDAN JX", Jx);
-            //     cv::imshow("BOHDAN JY", Jy);
-            //     cv::imshow("BOHDAN JXY", Jxy);
-            //
-            //     // cv::imshow("BOHDAN WITH CORNERS", original_image);
-            //
-            //
-            // }
-            return feature_array;
+            const double threshold = max_R * 0.01;
+            for (int i = 2; i < n_rows - 2; i++) {
+                for (int j = 2; j < n_cols - 2; j++) {
+
+                    if (R_array[i][j] <= threshold) {
+                            // std::cout << "R > " << threshold << ": (" << i << ", " << j << ")" << std::endl;
+                            R_array[i][j] = -69;
+                            // cv::circle(original_image, cv::Point(j, i), 0.5, cv::Scalar(0, 255, 0), 1);
+                    }
+
+                }
+            }
+            return R_array;
 
         }
 
-        static void prepare_and_test(const std::string& filename, const std::string& cur_path, const bool draw = false) {
+        static auto non_maximum_suppression(const std::vector<std::vector<double>>& R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
+            std::vector<std::tuple<int, int, double>> local_maximums;
 
-            cv::Mat image = cv::imread(cur_path + filename);
+            const int upper_bound_outer = n_rows - (k / 2);
+            const int upper_bound_inner = n_cols - k / 2;
+            double max_val, center_val;
+
+            for (int i = k / 2; i <= upper_bound_outer - k; i++) {
+
+                for (int j = k / 2; j <= upper_bound_inner - k; j++) { // ?
+
+                    max_val = -DBL_MIN;
+                    center_val = R_values[i][j];
+
+                    for (int n = i - k / 2; n <= i + k / 2; n++) {
+
+                        for (int m = j - k / 2; m <= j + k / 2; m++) {
+
+                            max_val = std::max(max_val, R_values[n][m]);
+
+                        }
+
+                    }
+
+                    if (max_val == center_val) {
+                        local_maximums.emplace_back(i, j, center_val);
+                    }
+
+                }
+
+            }
+            std::sort(std::begin(local_maximums), std::end(local_maximums),
+              [](const std::tuple<int, int, double>& e1, const std::tuple<int, int, double>& e2) {
+                  return std::get<2>(e1) > std::get<2>(e2); });
+
+            if (N > 0 && N <= local_maximums.size()) {
+                local_maximums.resize(N);
+            }
+
+            return local_maximums;
+        }
+
+        static void prepare_and_test(const std::string& filename, const std::string& cur_path, const std::string& win_name, const bool draw = false) {
+
+            cv::Mat image1 = cv::imread(cur_path + filename);
+
+            cv::Mat image2 = cv::imread(cur_path + filename);
+
 
             cv::Mat my_blurred_gray;
 
-            const cv::Mat blurred = FeatureExtraction::custom_bgr2gray(image);
+            const cv::Mat blurred = FeatureExtraction::custom_bgr2gray(image1);
 
             cv::GaussianBlur(blurred, my_blurred_gray, cv::Size(7, 7), 0);
 
@@ -242,16 +310,16 @@ class FeatureExtraction {
 
             auto gradients = FeatureExtraction::direction_gradients(my_blurred_gray, n_rows, n_cols);
 
-            auto harris_corners = FeatureExtraction::harris_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.1);
+            auto harris_corners = FeatureExtraction::harris_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.05);
+
+            auto local_mins = FeatureExtraction::non_maximum_suppression(harris_corners, n_rows, n_cols, 5, 500);
 
             if (draw) {
-                for (auto coords : harris_corners) {
-                    cv::circle(image, cv::Point(coords[0], coords[1]), 0.5, cv::Scalar(0, 255, 0), 1);
+                for (auto coords : local_mins) {
+                    cv::circle(image1, cv::Point(std::get<1>(coords), std::get<0>(coords)), 0.5, cv::Scalar(0, 255, 0), 3);
                 }
-                cv::imshow("BOhdan with corners", image);
+                cv::imshow("BOhdan with corners", image1);
             }
-
-
         }
 
 };
@@ -301,7 +369,7 @@ int main() {
 
     std::string cur_path = __FILE__;
     cur_path = cur_path.erase(cur_path.length() - 22); //weird staff
-    std::string test_file = "test_images/butter.webp";
+    std::string test_file = "test_images/squares2.png";
     // std::cout << "CUr path " << cur_path + "test_images/Notre-Dame-de-Paris-France.webp" <<std::endl;
 
     // extract_features("test_images/Notre-Dame-de-Paris-France.webp", cur_path);
@@ -321,7 +389,9 @@ int main() {
     //
     // cv::imshow("Bohdan sobel rebuilt", FeatureExtraction::sobel_filter(gradients[0], gradients[1], n_rows, n_cols));
 
-    FeatureExtraction::prepare_and_test(test_file, cur_path, true);
+    FeatureExtraction::prepare_and_test(test_file, cur_path, "No smoothing", true);
+
+
 
     cv::waitKey(0);
 
