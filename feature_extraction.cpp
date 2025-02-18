@@ -1,7 +1,6 @@
 //
 // Created by julfy1 on 2/1/25.
 //
-#include <iostream>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
@@ -33,7 +32,7 @@ class FeatureExtraction {
 
 
 
-        static auto test_their_sobel(const std::string& filename, const std::string& cur_path) {
+        static auto test_their_sobel(const std::string& filename, const std::string& cur_path) { // Not needed, but there IDK
             cv::Mat image = cv::imread(cur_path + filename);
 
             cv::Mat blurred;
@@ -95,12 +94,8 @@ class FeatureExtraction {
             cv::imshow(win_name, return_something);
         }
 
-        // static auto prepare_image()
-
         static auto direction_gradients(cv::Mat& picture, const int& n_rows, const int& n_cols) {
 
-            // const int n_rows = my_blurred_gray.rows;
-            // const int n_cols = my_blurred_gray.cols;
             uchar* ptr_src1;
             uchar* ptr_src2;
             uchar* ptr_src3;
@@ -148,8 +143,6 @@ class FeatureExtraction {
         }
 
         static auto sobel_filter(cv::Mat& Jx, cv::Mat& Jy, const int& n_rows, const int& n_cols) {
-            // const int n_rows = Jx.rows;
-            // const int n_cols = Jx.cols;
 
             cv::Mat sobel_filtered = cv::Mat::zeros(n_rows, n_cols, CV_8UC1);
 
@@ -174,7 +167,7 @@ class FeatureExtraction {
 
             double jx2, jy2, det, trace, R;
             // const double k = 0.07;
-            double max_R = -DBL_MIN; // I've seen somewhere the implementation of thresholding with t
+            double max_R = -DBL_MIN; // I've seen somewhere the implementation of thresholding with threshold = 0.01 * max(R)
 
             double* ptr_srcjx;
             double* ptr_srcjy;
@@ -183,8 +176,6 @@ class FeatureExtraction {
             double sumjxy;
 
             std::vector<std::vector<double>> R_array(n_rows, std::vector<double>(n_cols, 0));
-
-            // std::cout << "R_array size: "<< R_array[1].size() << std::endl;
 
             for (int i = 2; i < n_rows - 2; i++) {
 
@@ -222,13 +213,6 @@ class FeatureExtraction {
 
                     R_array[i][j] = R;
 
-                    // int check_number = 1000000;
-                    // if (R > check_number) {
-                    //     std::cout << "R > " << check_number << ": (" << i << ", " << j << ")" << std::endl;
-                    //     feature_array.push_back({j, i});
-                    //     // cv::circle(original_image, cv::Point(j, i), 0.5, cv::Scalar(0, 255, 0), 1);
-                    // }
-
                 }
 
             }
@@ -241,7 +225,6 @@ class FeatureExtraction {
                     if (R_array[i][j] <= threshold) {
                             // std::cout << "R > " << threshold << ": (" << i << ", " << j << ")" << std::endl;
                             R_array[i][j] = -69;
-                            // cv::circle(original_image, cv::Point(j, i), 0.5, cv::Scalar(0, 255, 0), 1);
                     }
 
                 }
