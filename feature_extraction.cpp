@@ -7,11 +7,12 @@
 #include <string>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
+#include <queue>
 
 class FeatureExtraction {
 
     public:
-    
         static auto custom_bgr2gray(cv::Mat& picture) {
             const int n_rows = picture.rows;
             const int n_cols = picture.cols * 3;
@@ -164,7 +165,6 @@ class FeatureExtraction {
 
         static auto harris_corner_detection(cv::Mat& Jx, cv::Mat& Jy, cv::Mat& Jxy, const int& n_rows, const int& n_cols, const double& k) {
 
-
             double jx2, jy2, det, trace, R;
             // const double k = 0.07;
             double max_R = -DBL_MIN; // I've seen somewhere the implementation of thresholding with threshold = 0.01 * max(R)
@@ -208,6 +208,8 @@ class FeatureExtraction {
                     trace = jx2 + jy2;
 
                     R = det - (k * trace * trace);
+                    // R = std::min(jx2, jy2);
+
                     // std::cout << "R: " << R << std::endl;
                     max_R = std::max(max_R, R);
 
@@ -217,14 +219,85 @@ class FeatureExtraction {
 
             }
 
-
+            //Ba bemba
             const double threshold = max_R * 0.01;
             for (int i = 2; i < n_rows - 2; i++) {
                 for (int j = 2; j < n_cols - 2; j++) {
 
                     if (R_array[i][j] <= threshold) {
                             // std::cout << "R > " << threshold << ": (" << i << ", " << j << ")" << std::endl;
-                            R_array[i][j] = -69;
+                            R_array[i][j] = 0;
+                    }
+                }
+            }
+            return R_array;
+        }
+
+        static auto shitomasi_corner_detection(cv::Mat& Jx, cv::Mat& Jy, cv::Mat& Jxy, const int& n_rows, const int& n_cols, const double& k) {
+
+
+            double jx2, jy2, det, trace, R;
+            // const double k = 0.07;
+            double max_R = -DBL_MIN; // I've seen somewhere the implementation of thresholding with threshold = 0.01 * max(R)
+
+            double* ptr_srcjx;
+            double* ptr_srcjy;
+            double* ptr_srcjxy;
+
+            double sumjxy;
+
+            std::vector<std::vector<double>> R_array(n_rows, std::vector<double>(n_cols, 0));
+
+            for (int i = 2; i < n_rows - 2; i++) {
+
+                for (int j = 2; j < n_cols - 2; j++) {
+
+                    // R = det(M)−k⋅(trace(M))**2
+                    sumjxy = 0;
+                    jx2 = 0, jy2 = 0;
+
+                    for (int m = -2; m <= 2; m++) {
+                        ptr_srcjx = Jx.ptr<double>(i + m);
+                        ptr_srcjy = Jy.ptr<double>(i + m);
+                        ptr_srcjxy = Jxy.ptr<double>(i + m);
+
+                        for (int n = -2; n <= 2; n++) {
+                            double jx = ptr_srcjx[j + n];
+                            double jy = ptr_srcjy[j + n];
+                            double jxy = ptr_srcjxy[j + n];
+
+                            // sumjx += jx;
+                            // sumjy += jy;
+                            sumjxy += jxy;
+
+                            jx2 += jx * jx;  // Accumulate squared Jx values
+                            jy2 += jy * jy;  // Accumulate squared Jy values
+                        }
+                    }
+
+                    det = (jx2 * jy2) - (sumjxy * sumjxy);
+                    trace = jx2 + jy2;
+
+                    R = (trace / 2) - (0.5 * std::sqrt(trace * trace - 4 * det));
+                    // R = std::min(jx2, jy2);
+
+                    // std::cout << "R: " << R << std::endl;
+                    max_R = std::max(max_R, R);
+
+                    R_array[i][j] = R;
+
+                }
+
+            }
+
+            //Ba bemba
+            const double threshold = max_R * 0.01;
+            for (int i = 2; i < n_rows - 2; i++) {
+                for (int j = 2; j < n_cols - 2; j++) {
+
+                    if (R_array[i][j] <= threshold) {
+                            // std::cout << "R > " << threshold << ": (" << i << ", " << j << ")" << std::endl;
+                            R_array[i][j] = 0;
                     }
 
                 }
@@ -233,47 +306,189 @@ class FeatureExtraction {
 
         }
 
-        static auto non_maximum_suppression(const std::vector<std::vector<double>>& R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
-            std::vector<std::tuple<int, int, double>> local_maximums;
 
-            const int upper_bound_outer = n_rows - (k / 2);
-            const int upper_bound_inner = n_cols - k / 2;
-            double max_val, center_val;
+        static auto draw_score_distribution(const std::vector<std::vector<double>>& R_values, const std::string& win_name) {
 
-            for (int i = k / 2; i <= upper_bound_outer - k; i++) {
+            int rows = R_values.size();
+            int cols = R_values[0].size();
 
-                for (int j = k / 2; j <= upper_bound_inner - k; j++) { // ?
+            cv::Mat mat(rows, cols, CV_64F); // Create matrix to store values
 
-                    max_val = -DBL_MIN;
-                    center_val = R_values[i][j];
+            // Copy values
+            for (int i = 0; i < rows; ++i) {
+                for (int j = 0; j < cols; ++j) {
+                    mat.at<double>(i, j) = R_values[i][j];
+                }
+            }
+
+            // Normalize values to range [0, 1]
+            double minVal, maxVal;
+            cv::minMaxLoc(mat, &minVal, &maxVal);
+            cv::Mat normMat = (mat - minVal) / (maxVal - minVal); // Normalize between 0-1
+
+            // Create color image
+            cv::Mat colorImage(rows, cols, CV_8UC3);
+
+            for (int i = 0; i < rows; ++i) {
+                for (int j = 0; j < cols; ++j) {
+                    double val = normMat.at<double>(i, j); // Normalized value [0, 1]
+
+                    // Map to RGB colors (Green → Blue → Red)
+                    uchar red   = static_cast<uchar>(255 * std::max(0.0, (val - 0.5) * 2));  // Increase red for higher values
+                    uchar blue  = static_cast<uchar>(255 * std::max(0.0, (0.5 - std::abs(val - 0.5)) * 2));  // Max in the middle
+                    uchar green = static_cast<uchar>(255 * std::max(0.0, (0.5 - val) * 2));  // Decrease green as value increases
+
+                    colorImage.at<cv::Vec3b>(i, j) = cv::Vec3b(blue, green, red);
+                }
+            }
+            cv::imshow(win_name, colorImage);
+            cv::imwrite("../test_images/output_images/" + win_name + ".png", colorImage);
+
+        }
+
+        // static auto non_maximum_suppression(const std::vector<std::vector<double>>& R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
+        //     std::vector<std::tuple<int, int, double>> local_maximums;
+        //
+        //     auto R_values_output = R_values;
+        //
+        //     const int upper_bound_outer = n_rows - (k / 2);
+        //     const int upper_bound_inner = n_cols - k / 2;
+        //     double max_val, center_val;
+        //     bool change_not_center;
+        //
+        //     for (int i = k / 2; i <= upper_bound_outer - k; i++) {
+        //
+        //         for (int j = k / 2; j <= upper_bound_inner - k; j++) { // ?
+        //
+        //             max_val = -DBL_MIN;
+        //             center_val = R_values_output[i][j];
+        //
+        //             for (int n = i - k / 2; n <= i + k / 2; n++) {
+        //
+        //                 for (int m = j - k / 2; m <= j + k / 2; m++) {
+        //
+        //                     // max_val = std::max(max_val, R_values[n][m]);
+        //                     if (center_val >= R_values_output[n][m] && i != n && j != m) {
+        //
+        //                         R_values_output[n][m] = 0;
+        //
+        //                     }
+        //                     else if (center_val <= R_values_output[n][m] && i == n && j == m) {
+        //
+        //                         R_values_output[n][m] = 0;
+        //
+        //                     }
+        //
+        //                 }
+        //
+        //             }
+        //
+        //             local_maximums.emplace_back(i, j, center_val);
+        //
+        //
+        //         }
+        //
+        //     }
+        //     std::sort(std::begin(local_maximums), std::end(local_maximums),
+        //       [](const std::tuple<int, int, double>& e1, const std::tuple<int, int, double>& e2) {
+        //           return std::get<2>(e1) > std::get<2>(e2); });
+        //
+        //     if (N > 0 && N <= local_maximums.size()) {
+        //         local_maximums.resize(N);
+        //     }
+        //
+        //     return local_maximums;
+        // }
+
+        // static auto non_maximum_suppression(std::vector<std::vector<double>> R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
+        //
+        //     // using Element = std::tuple<int, int, double>;
+        //     std::priority_queue<std::tuple<int, int, double>, std::vector<std::tuple<int, int, double>>> max_heap;
+        //     std::vector<std::tuple<int, int, double>> output_corners;
+        //     output_corners.reserve(N);
+        //
+        //     auto cmp = [](const std::tuple<int, int, double>& a, const std::tuple<int, int, double>& b) {
+        //         return std::get<2>(a) > std::get<2>(b);
+        //     };
+        //
+        //     std::priority_queue<std::tuple<int, int, double>, std::vector<std::tuple<int, int, double>>, decltype(cmp)> minHeap(cmp);
+        //
+        //     for (int i = k / 2; i < n_rows - k / 2; i++) {
+        //         for (int j = k / 2; j < n_cols - k / 2; j++) {
+        //             // max_val = std::numeric_limits<double>::lowest();
+        //             double center_val = R_values[i][j];
+        //             int count = 0;
+        //
+        //             for (int n = i - k / 2; n <= i + k / 2; n++) {
+        //                 for (int m = j - k / 2; m <= j + k / 2; m++) {
+        //
+        //                     if (!(i == n && j == m)) {
+        //                         // max_val = std::max(max_val, R_values[n][m]);
+        //                         if (R_values[n][m] <= center_val) {
+        //                             R_values[n][m] = 0;
+        //                             count++;
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //
+        //             if (count == (int)(k * k) - 1) {
+        //                 max_heap.push({i, j, center_val});
+        //             }
+        //
+        //         }
+        //
+        //     }
+        //
+        //     for (int i = 0; i < N && !max_heap.empty(); i++) {
+        //         output_corners.push_back(max_heap.top());
+        //         // std::cout << "Hi! I am Sponge Bob! (" << std::get<0>(max_heap.top()) << ", " << std::get<1>(max_heap.top()) << ")" << std::endl;
+        //         max_heap.pop();
+        //
+        //     }
+        //
+        // return output_corners;
+        //
+        // }
+
+    static auto non_maximum_suppression(std::vector<std::vector<double>> R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
+            std::priority_queue<std::tuple<double, int, int>> max_heap; // Store (R_value, i, j)
+            std::vector<std::tuple<int, int, double>> output_corners;
+            output_corners.reserve(N);
+            int count = 0;
+
+            for (int i = k / 2; i < n_rows - k / 2; i++) {
+                for (int j = k / 2; j < n_cols - k / 2; j++) {
+                    double center_val = R_values[i][j];
+                    bool is_local_max = true;
 
                     for (int n = i - k / 2; n <= i + k / 2; n++) {
-
                         for (int m = j - k / 2; m <= j + k / 2; m++) {
-
-                            max_val = std::max(max_val, R_values[n][m]);
-
+                            if (!(n == i && m == j)) {
+                                if (R_values[n][m] >= center_val) {
+                                    is_local_max = false;
+                                    break;
+                                }
+                            }
                         }
-
+                        if (!is_local_max) break;
                     }
 
-                    if (max_val == center_val) {
-                        local_maximums.emplace_back(i, j, center_val);
+                    if (is_local_max) {
+                        max_heap.push({center_val, i, j});
                     }
-
                 }
-
-            }
-            std::sort(std::begin(local_maximums), std::end(local_maximums),
-              [](const std::tuple<int, int, double>& e1, const std::tuple<int, int, double>& e2) {
-                  return std::get<2>(e1) > std::get<2>(e2); });
-
-            if (N > 0 && N <= local_maximums.size()) {
-                local_maximums.resize(N);
             }
 
-            return local_maximums;
+            for (int i = 0; i < N && !max_heap.empty(); i++) {
+                output_corners.push_back({std::get<1>(max_heap.top()), std::get<2>(max_heap.top()), std::get<0>(max_heap.top())});
+                max_heap.pop();
+                count++;
+            }
+            std::cout << "COunt: " << count << std::endl;
+            return output_corners;
         }
+
 
         static void prepare_and_test(const std::string& filename, const std::string& cur_path, const std::string& win_name, const bool draw = false) {
 
@@ -295,13 +510,35 @@ class FeatureExtraction {
 
             auto harris_corners = FeatureExtraction::harris_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.05);
 
-            auto local_mins = FeatureExtraction::non_maximum_suppression(harris_corners, n_rows, n_cols, 5, 500);
+            auto shitomasi_corners = FeatureExtraction::shitomasi_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.05);
+
+            auto local_mins_shitomasi = FeatureExtraction::non_maximum_suppression(shitomasi_corners, n_rows, n_cols, 20, 1500);
+
+            auto local_mins_harris = FeatureExtraction::non_maximum_suppression(harris_corners, n_rows, n_cols, 20, 1500);
+
+            draw_score_distribution(harris_corners, "harris");
+
+            draw_score_distribution(shitomasi_corners, "shi-tomasi");
 
             if (draw) {
-                for (auto coords : local_mins) {
-                    cv::circle(image1, cv::Point(std::get<1>(coords), std::get<0>(coords)), 0.5, cv::Scalar(0, 255, 0), 3);
+                for (auto coords : local_mins_shitomasi) {
+
+                    // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
+
+                    cv::circle(image1, cv::Point(std::get<1>(coords), std::get<0>(coords)), 3, cv::Scalar(0, 255, 0), 1);
                 }
-                cv::imshow("BOhdan with corners", image1);
+                cv::imshow("BOhdan with corners shi-tomasi", image1);
+                cv::imwrite("../test_images/output_images/shi-tomasi_with_corners.png", image1);
+            }
+
+            if (draw) {
+                for (auto coords : local_mins_harris) {
+                    // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
+
+                    cv::circle(image2, cv::Point(std::get<1>(coords), std::get<0>(coords)), 3, cv::Scalar(0, 255, 0), 1);
+                }
+                cv::imshow("BOhdan with corners harris", image2);
+                cv::imwrite("../test_images/output_images/harris_with_corners.png", image2);
             }
         }
 
@@ -346,13 +583,33 @@ auto test_opencv_sobel(const std::string& filename, const std::string& cur_path)
 
 }
 
+auto test_opencv_corner_detection(const std::string& filename, const std::string& cur_path, const std::string& win_name, const int& N) {
+    cv::Mat image = cv::imread(cur_path + filename);
+    cv::Mat gray;
+    std::vector<cv::Point2f> corners;
+    if (image.channels() > 1) {
+        cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+    } else {
+        gray = image;
+    }
+
+    cv::goodFeaturesToTrack(gray, corners, N, 0.01, 20);
+
+    for (const auto& corner : corners) {
+        cv::circle(image, corner, 3, cv::Scalar(0, 255, 0), 1);
+    }
+
+    cv::imshow(win_name, image);
+    cv::imwrite("../test_images/output_images/" + win_name + ".png", image);
+
+}
 
 
 int main() {
 
     std::string cur_path = __FILE__;
     cur_path = cur_path.erase(cur_path.length() - 22); //weird staff
-    std::string test_file = "test_images/squares2.png";
+    std::string test_file = "test_images/Notre-Dame-de-Paris-France.webp";
     // std::cout << "CUr path " << cur_path + "test_images/Notre-Dame-de-Paris-France.webp" <<std::endl;
 
     // extract_features("test_images/Notre-Dame-de-Paris-France.webp", cur_path);
@@ -374,6 +631,7 @@ int main() {
 
     FeatureExtraction::prepare_and_test(test_file, cur_path, "No smoothing", true);
 
+    test_opencv_corner_detection(test_file, cur_path, "opencv implementation", 1500);
 
 
     cv::waitKey(0);
