@@ -21,23 +21,34 @@ private:
         for (size_t i = 0; i < points.size(); ++i) {
             Eigen::Vector3d p1 = normPoints1[i];
             Eigen::Vector3d p2 = normPoints2[i];
-            A.row(i) << p1.x() * p2.x(), p1.x() * p2.y(), p1.x(), p1.y() * p2.x(), p1.y() * p2.y(), p1.y(), p2.x(), p2.y(), 1;
+            A.row(i) << p1.x() * p2.x(), p1.x() * p2.y(), p1.x(),
+                        p1.y() * p2.x(), p1.y() * p2.y(), p1.y(),
+                        p2.x(), p2.y(), 1;
         }
 
+        // Solve Af = 0 using SVD
         Eigen::JacobiSVD<Eigen::MatrixXd> svd(A, Eigen::ComputeFullV);
         Eigen::VectorXd f = svd.matrixV().col(8);
 
+        // Form the normalized Fundamental Matrix
         Eigen::Matrix3d F;
         F << f(0), f(1), f(2),
              f(3), f(4), f(5),
              f(6), f(7), f(8);
 
+        // Denormalize F
+        F = T2.transpose() * F * T1;
+
+        // Enforce rank 2 constraint AFTER denormalization
         Eigen::JacobiSVD<Eigen::Matrix3d> svdF(F, Eigen::ComputeFullU | Eigen::ComputeFullV);
         Eigen::Vector3d singularValues = svdF.singularValues();
-        singularValues(2) = 0;
+        singularValues(2) = 0; // Force smallest singular value to be 0
         F = svdF.matrixU() * singularValues.asDiagonal() * svdF.matrixV().transpose();
 
-        return T2.transpose() * F * T1;
+        Eigen::JacobiSVD<Eigen::Matrix3d> checkSVD(F, Eigen::ComputeFullU | Eigen::ComputeFullV);
+        std::cout << "Singular values of final F: " << checkSVD.singularValues().transpose() << std::endl;
+
+        return F;
     }
 
     static void normalizePoints(const std::vector<std::pair<Point, Point>>& points,
