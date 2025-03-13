@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.10)
 project(FeatureExtraction)
 # export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 find_package(OpenCV REQUIRED)
+set(CMAKE_CXX_STANDARD 20)
 
-add_executable(feature_extraction feature_extraction.cpp)
+add_executable(feature_extraction feature_extraction.cpp freak_feature_descriptor.cpp)
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 
 target_include_directories(feature_extraction PRIVATE ${OpenCV_INCLUDE_DIRS})

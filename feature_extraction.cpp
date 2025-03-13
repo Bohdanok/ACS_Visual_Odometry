@@ -9,6 +9,11 @@
 #include <algorithm>
 #include <iostream>
 #include <queue>
+#include <bit>
+
+struct point {
+    size_t x, y;
+};
 
 class FeatureExtraction {
 
@@ -346,110 +351,6 @@ class FeatureExtraction {
 
         }
 
-        // static auto non_maximum_suppression(const std::vector<std::vector<double>>& R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
-        //     std::vector<std::tuple<int, int, double>> local_maximums;
-        //
-        //     auto R_values_output = R_values;
-        //
-        //     const int upper_bound_outer = n_rows - (k / 2);
-        //     const int upper_bound_inner = n_cols - k / 2;
-        //     double max_val, center_val;
-        //     bool change_not_center;
-        //
-        //     for (int i = k / 2; i <= upper_bound_outer - k; i++) {
-        //
-        //         for (int j = k / 2; j <= upper_bound_inner - k; j++) { // ?
-        //
-        //             max_val = -DBL_MIN;
-        //             center_val = R_values_output[i][j];
-        //
-        //             for (int n = i - k / 2; n <= i + k / 2; n++) {
-        //
-        //                 for (int m = j - k / 2; m <= j + k / 2; m++) {
-        //
-        //                     // max_val = std::max(max_val, R_values[n][m]);
-        //                     if (center_val >= R_values_output[n][m] && i != n && j != m) {
-        //
-        //                         R_values_output[n][m] = 0;
-        //
-        //                     }
-        //                     else if (center_val <= R_values_output[n][m] && i == n && j == m) {
-        //
-        //                         R_values_output[n][m] = 0;
-        //
-        //                     }
-        //
-        //                 }
-        //
-        //             }
-        //
-        //             local_maximums.emplace_back(i, j, center_val);
-        //
-        //
-        //         }
-        //
-        //     }
-        //     std::sort(std::begin(local_maximums), std::end(local_maximums),
-        //       [](const std::tuple<int, int, double>& e1, const std::tuple<int, int, double>& e2) {
-        //           return std::get<2>(e1) > std::get<2>(e2); });
-        //
-        //     if (N > 0 && N <= local_maximums.size()) {
-        //         local_maximums.resize(N);
-        //     }
-        //
-        //     return local_maximums;
-        // }
-
-        // static auto non_maximum_suppression(std::vector<std::vector<double>> R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
-        //
-        //     // using Element = std::tuple<int, int, double>;
-        //     std::priority_queue<std::tuple<int, int, double>, std::vector<std::tuple<int, int, double>>> max_heap;
-        //     std::vector<std::tuple<int, int, double>> output_corners;
-        //     output_corners.reserve(N);
-        //
-        //     auto cmp = [](const std::tuple<int, int, double>& a, const std::tuple<int, int, double>& b) {
-        //         return std::get<2>(a) > std::get<2>(b);
-        //     };
-        //
-        //     std::priority_queue<std::tuple<int, int, double>, std::vector<std::tuple<int, int, double>>, decltype(cmp)> minHeap(cmp);
-        //
-        //     for (int i = k / 2; i < n_rows - k / 2; i++) {
-        //         for (int j = k / 2; j < n_cols - k / 2; j++) {
-        //             // max_val = std::numeric_limits<double>::lowest();
-        //             double center_val = R_values[i][j];
-        //             int count = 0;
-        //
-        //             for (int n = i - k / 2; n <= i + k / 2; n++) {
-        //                 for (int m = j - k / 2; m <= j + k / 2; m++) {
-        //
-        //                     if (!(i == n && j == m)) {
-        //                         // max_val = std::max(max_val, R_values[n][m]);
-        //                         if (R_values[n][m] <= center_val) {
-        //                             R_values[n][m] = 0;
-        //                             count++;
-        //                         }
-        //                     }
-        //                 }
-        //             }
-        //
-        //             if (count == (int)(k * k) - 1) {
-        //                 max_heap.push({i, j, center_val});
-        //             }
-        //
-        //         }
-        //
-        //     }
-        //
-        //     for (int i = 0; i < N && !max_heap.empty(); i++) {
-        //         output_corners.push_back(max_heap.top());
-        //         // std::cout << "Hi! I am Sponge Bob! (" << std::get<0>(max_heap.top()) << ", " << std::get<1>(max_heap.top()) << ")" << std::endl;
-        //         max_heap.pop();
-        //
-        //     }
-        //
-        // return output_corners;
-        //
-        // }
 
     static auto non_maximum_suppression(std::vector<std::vector<double>> R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
             std::priority_queue<std::tuple<double, int, int>> max_heap; // Store (R_value, i, j)
@@ -488,7 +389,164 @@ class FeatureExtraction {
             std::cout << "COunt: " << count << std::endl;
             return output_corners;
         }
+        const double largets_radius = 2 / 3;
 
+        const double smallest_radius = 2 / 24;
+
+        const double retinal_spacing = (largets_radius - smallest_radius) / 21;
+    
+        const std::vector<double> retinal_keypoint_radii = {largets_radius, largets_radius - 6 * smallest_radius, largets_radius - 11 * smallest_radius,
+                         largets_radius - 15 * smallest_radius, largets_radius - 18 * smallest_radius,
+                         largets_radius - 20 * smallest_radius, smallest_radius, 0};
+
+        const std::vector<double> retinal_distances_from_the_center = {largets_radius / 2.0, (largets_radius - 6 * smallest_radius) / 2.0, (largets_radius - 11 * smallest_radius) / 2.0,
+                     (largets_radius - 15 * smallest_radius) / 2.0, (largets_radius - 18 * smallest_radius) / 2.0,
+                     (largets_radius - 20 * smallest_radius) / 2.0, smallest_radius / 2.0, 0};
+        //////////////////////////////////////////////////////////////////////////////////////FREAKS
+
+        inline static auto prepare_the_surroundings(const cv::Mat& blurred_gray_picture, const std::vector<int>& key_point, const int& n_cols, const int& n_rows) {
+            const std::vector<int> base_radii = {0, 2, 3, 5, 7, 10, 15}; // might be 1 to always blur the surroundings
+
+            const double scale_factor = std::min(n_rows, n_cols) / 100; //22.5
+
+            const double x_norm = static_cast<double>(key_point[1]) / static_cast<double>(n_cols);
+            const double y_norm = static_cast<double>(key_point[0]) / static_cast<double>(n_rows);
+
+
+            const double distance_form_the_origin = std::sqrt(std::pow(x_norm - 0.5, 2) + std::pow(y_norm - 0.5, 2));
+
+            const int index = std::min(static_cast<int>(distance_form_the_origin * base_radii.size()), static_cast<int>(base_radii.size() - 1));
+            const int radius = base_radii[index] * scale_factor;
+            if (radius == 0) {return;}
+            std::cout << "Point: <" << key_point[0] << ", " << key_point[1] << ">" << "\tNormed distance from the origin: " << distance_form_the_origin << "\tRadius: " << radius << std::endl;
+
+            const int x = std::max(0, key_point[1] - radius);
+            int const y = std::max(0, key_point[0] - radius);
+            int const width = std::min(n_cols - x, 2 * radius);
+            int const height = std::min(n_rows - y, 2 * radius);
+
+            const cv::Rect roi(x, y, width, height);
+
+            cv::Mat roi_image = blurred_gray_picture(roi);
+
+            const int odd_rad = (radius & 1) ? radius : radius + 1;
+
+            cv::GaussianBlur(roi_image, roi_image, cv::Size(odd_rad, odd_rad), odd_rad);
+
+        }
+
+        static double compute_orientation(point point, cv::Mat& image, const int& n_cols, const int& n_rows) {
+            std::vector<std::pair<int, int>> predefined_point_for_matching = {
+                {33, 0}, {17, -30}, {-17, -30}, {-33, 0}, {-17, 30}, {17, 30},
+                {22, 13}, {22, -13}, {0, -26}, {-22, -13}, {-22, 13}, {0, 26},
+                {18, 0}, {9, -17}, {-9, -17}, {-18, 0}, {-9, 17}, {9, 17},
+                {11, 7}, {11, -7}, {0, -13}, {-11, -7}, {-11, 7}, {0, 13},
+                {8, 0}, {4, -8}, {-4, -8}, {-8, 0}, {-4, 8}, {4, 8},
+                {5, 3}, {5, -3}, {0, -6}, {-5, -3}, {-5, 3}, {0, 6},
+                {4, 0}, {2, -4}, {-2, -4}, {-4, 0}, {-2, 4}, {2, 4},
+                {0, 0}}; // somebody just use less points for rotation measuring: [(0, 2), (1, 3), (2, 4), (3, 5), (0, 4), (1, 5)]
+            const size_t M = 903;
+
+            double O_x = 0;
+            double O_y = 0;
+
+            for (int i = 0; i < predefined_point_for_matching.size(); i++) {
+                const double point1_intensity = image.at<double>(std::get<1>(predefined_point_for_matching[i]) + point.y, std::get<0>(predefined_point_for_matching[i]) + point.x);
+                for (int j = i + 1; j < predefined_point_for_matching.size(); j++) {
+                    const double intensity_change = point1_intensity - image.at<double>(std::get<1>(predefined_point_for_matching[j]) + point.y, std::get<0>(predefined_point_for_matching[j]) + point.x);
+                    // norm of 2 vectors
+                    const double norm = sqrt(std::pow(std::get<1>(predefined_point_for_matching[i]) + point.y - std::get<1>(predefined_point_for_matching[j]) + point.y, 2) +
+                        std::pow(std::get<0>(predefined_point_for_matching[i]) + point.x - std::get<0>(predefined_point_for_matching[j]) + point.x, 2));
+                    O_x += intensity_change * (std::get<0>(predefined_point_for_matching[i]) - std::get<0>(predefined_point_for_matching[j])) / norm;
+                    O_y += intensity_change * (std::get<1>(predefined_point_for_matching[i]) - std::get<1>(predefined_point_for_matching[j])) / norm;
+                }
+            }
+
+            return std::atan2(O_y, O_x); // div by M?? Nah, I'd win
+
+        }
+
+        static auto FREAK_feature_description(const std::vector<std::tuple<int, int, double>>& key_points, cv::Mat blurred_gray_picture, const int& n_cols, const int& n_rows) {
+
+            for (auto key_point : key_points) {
+                prepare_the_surroundings(blurred_gray_picture, {std::get<0>(key_point), std::get<1>(key_point)}, n_cols, n_rows);
+            }
+
+            std::vector<std::pair<int, int>> predefined_point_for_matching = {
+                {33, 0}, {17, -30}, {-17, -30}, {-33, 0}, {-17, 30}, {17, 30},
+                {22, 13}, {22, -13}, {0, -26}, {-22, -13}, {-22, 13}, {0, 26},
+                {18, 0}, {9, -17}, {-9, -17}, {-18, 0}, {-9, 17}, {9, 17},
+                {11, 7}, {11, -7}, {0, -13}, {-11, -7}, {-11, 7}, {0, 13},
+                {8, 0}, {4, -8}, {-4, -8}, {-8, 0}, {-4, 8}, {4, 8},
+                {5, 3}, {5, -3}, {0, -6}, {-5, -3}, {-5, 3}, {0, 6},
+                {4, 0}, {2, -4}, {-2, -4}, {-4, 0}, {-2, 4}, {2, 4},
+                {0, 0}};
+
+            std::vector<std::pair<std::pair<int, int>, std::pair<int, int>>> all_point_combinations;
+
+            for (int i = 0; i < predefined_point_for_matching.size(); i++) {
+
+                for (int j = 1; j < predefined_point_for_matching.size(); j++) {
+                    all_point_combinations.emplace_back(predefined_point_for_matching[i], predefined_point_for_matching[i]);
+                }
+            }
+
+
+            std::cout << "Num of cols: " << n_cols << std::endl;
+            std::cout << "Num of rows: " << n_rows << std::endl;
+            for (auto key_point : key_points) {
+                const auto p = point(std::get<1>(key_point), std::get<0>(key_point));
+                if (!((p.x >= 34) && (p.x <= n_cols - 34) && (p.y >= 30) && (p.y <= n_rows - 30))) {
+                    // std::cout << "Point to skip: " << "(" << p.x << ", " << p.y << ")" << std::endl ;
+                    continue;
+                }
+
+                // Rotate the image in the direction of the stronger intensity(for rotation invariance)
+
+                double angle = compute_orientation(p, blurred_gray_picture, n_cols, n_rows);
+                // std::cout << "ANgle: " << angle << std::endl;
+                cv::putText(blurred_gray_picture, std::to_string(angle), cv::Point(std::get<1>(key_point), std::get<0>(key_point)), cv::FONT_ITALIC, 0.5, cv::Scalar(0, 255, 0), 3);
+
+                const double rotation_matrix[4] = {std::cos(angle), -1 * std::sin(angle), std::sin(angle), std::cos(angle)};
+
+                // Create meaningful pair descriptions
+
+                for (auto pt : predefined_point_for_matching) {
+                    point pnt = point(std::get<0>(pt) * rotation_matrix[0] + std::get<1>(pt) * rotation_matrix[2],
+                                        (-1) * std::get<0>(pt) * rotation_matrix[1] + std::get<1>(pt) * rotation_matrix[4]);
+
+
+
+                }
+
+
+
+
+
+
+                // bool point_surroundings_comparison[43];
+
+                     //        sort(vec.begin(), vec.end(),
+                     // [](const Complex& a, const Complex& b) {
+                     //     // Compare Complex numbers based on their real
+                     //     // parts
+                     //     if (a.real == b.real) {
+                     //         // If real parts are equal, compare based
+                     //         // on imaginary parts
+                     //         return a.imag < b.imag;
+                     //     }
+                     //     // If real parts are different, use them for
+                     //     // comparison
+                     //     return a.real < b.real;
+                     // });
+            }
+
+            // for ()
+            cv::imshow("BOhdan with description", blurred_gray_picture);
+
+        }
+
+        //////////////////////////////////////////////////////////////////////////////////////FREAKS
 
         static void prepare_and_test(const std::string& filename, const std::string& cur_path, const std::string& win_name, const bool draw = false) {
 
@@ -520,12 +578,14 @@ class FeatureExtraction {
 
             draw_score_distribution(shitomasi_corners, "shi-tomasi");
 
+            FREAK_feature_description(local_mins_shitomasi, blurred, n_cols, n_rows);
+
             if (draw) {
                 for (auto coords : local_mins_shitomasi) {
 
                     // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
 
-                    cv::circle(image1, cv::Point(std::get<1>(coords), std::get<0>(coords)), 3, cv::Scalar(0, 255, 0), 1);
+                    cv::circle(image1, cv::Point(std::get<1>(coords), std::get<0>(coords)), 1, cv::Scalar(0, 0, 255), 3);
                 }
                 cv::imshow("BOhdan with corners shi-tomasi", image1);
                 cv::imwrite("../test_images/output_images/shi-tomasi_with_corners.png", image1);
@@ -535,7 +595,7 @@ class FeatureExtraction {
                 for (auto coords : local_mins_harris) {
                     // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
 
-                    cv::circle(image2, cv::Point(std::get<1>(coords), std::get<0>(coords)), 3, cv::Scalar(0, 255, 0), 1);
+                    cv::circle(image2, cv::Point(std::get<1>(coords), std::get<0>(coords)), 1, cv::Scalar(0, 0, 255), 3);
                 }
                 cv::imshow("BOhdan with corners harris", image2);
                 cv::imwrite("../test_images/output_images/harris_with_corners.png", image2);
@@ -543,6 +603,8 @@ class FeatureExtraction {
         }
 
 };
+
+
 
 
 auto test_opencv_sobel(const std::string& filename, const std::string& cur_path) {
@@ -609,7 +671,7 @@ int main() {
 
     std::string cur_path = __FILE__;
     cur_path = cur_path.erase(cur_path.length() - 22); //weird staff
-    std::string test_file = "test_images/Notre-Dame-de-Paris-France.webp";
+    std::string test_file = "test_images/Zhovkva2.jpg";
     // std::cout << "CUr path " << cur_path + "test_images/Notre-Dame-de-Paris-France.webp" <<std::endl;
 
     // extract_features("test_images/Notre-Dame-de-Paris-France.webp", cur_path);
@@ -631,7 +693,7 @@ int main() {
 
     FeatureExtraction::prepare_and_test(test_file, cur_path, "No smoothing", true);
 
-    test_opencv_corner_detection(test_file, cur_path, "opencv implementation", 1500);
+    // test_opencv_corner_detection(test_file, cur_path, "opencv implementation", 1500);
 
 
     cv::waitKey(0);
