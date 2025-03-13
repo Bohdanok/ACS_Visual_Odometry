@@ -12,29 +12,36 @@ const double MATCH_THRESHOLD = 0.5;
 
 int hammingDistance(const uint8_t* d1, const uint8_t* d2, int length) {
     int distance = 0;
-    for (int i = 0; i < length; ++i) {
+    int i = 0;
+
+    for (; i + 4 <= length; i += 4) {
+        uint32_t v1, v2;
+        std::memcpy(&v1, d1 + i, sizeof(uint32_t));
+        std::memcpy(&v2, d2 + i, sizeof(uint32_t));
+        distance += __builtin_popcount(v1 ^ v2);
+    }
+
+    for (; i < length; ++i) {
         distance += __builtin_popcount(d1[i] ^ d2[i]);
     }
+
     return distance;
 }
 
 std::vector<std::pair<int, int>> matchBinaryKeypoints(
     const cv::Mat& descriptors1,
     const cv::Mat& descriptors2,
-    float ratioThreshold = 0.75)
+    float ratioThreshold = 0.75f)
 {
     std::vector<std::pair<int, int>> matches;
-
     for (int i = 0; i < descriptors1.rows; ++i) {
         int bestIdx = -1, secondBestIdx = -1;
         int bestDist = std::numeric_limits<int>::max();
         int secondBestDist = std::numeric_limits<int>::max();
-
+        const uint8_t* desc1 = descriptors1.ptr<uint8_t>(i);
         for (int j = 0; j < descriptors2.rows; ++j) {
-            const uint8_t* desc1 = descriptors1.ptr<uint8_t>(i);
             const uint8_t* desc2 = descriptors2.ptr<uint8_t>(j);
             int dist = hammingDistance(desc1, desc2, descriptors1.cols);
-
             if (dist < bestDist) {
                 secondBestDist = bestDist;
                 secondBestIdx = bestIdx;
@@ -45,59 +52,12 @@ std::vector<std::pair<int, int>> matchBinaryKeypoints(
                 secondBestIdx = j;
             }
         }
-
         if (bestIdx != -1 && secondBestIdx != -1 && bestDist < ratioThreshold * secondBestDist) {
             matches.emplace_back(i, bestIdx);
         }
     }
-
     return matches;
 }
-
-// int hammingDistance(const uint8_t* d1, const uint8_t* d2, int length) {
-//     int distance = 0;
-//     int i = 0;
-//     for (; i + 8 <= length; i += 8) {
-//         uint64_t v1 = *reinterpret_cast<const uint64_t*>(d1 + i);
-//         uint64_t v2 = *reinterpret_cast<const uint64_t*>(d2 + i);
-//         distance += __builtin_popcountll(v1 ^ v2);
-//     }
-//     for (; i < length; ++i) {
-//         distance += __builtin_popcount(d1[i] ^ d2[i]);
-//     }
-//     return distance;
-// }
-
-// std::vector<std::pair<int, int>> matchBinaryKeypoints(
-//     const cv::Mat& descriptors1,
-//     const cv::Mat& descriptors2,
-//     float ratioThreshold = 0.75f)
-// {
-//     std::vector<std::pair<int, int>> matches;
-//     for (int i = 0; i < descriptors1.rows; ++i) {
-//         int bestIdx = -1, secondBestIdx = -1;
-//         int bestDist = std::numeric_limits<int>::max();
-//         int secondBestDist = std::numeric_limits<int>::max();
-//         const uint8_t* desc1 = descriptors1.ptr<uint8_t>(i);
-//         for (int j = 0; j < descriptors2.rows; ++j) {
-//             const uint8_t* desc2 = descriptors2.ptr<uint8_t>(j);
-//             int dist = hammingDistance(desc1, desc2, descriptors1.cols);
-//             if (dist < bestDist) {
-//                 secondBestDist = bestDist;
-//                 secondBestIdx = bestIdx;
-//                 bestDist = dist;
-//                 bestIdx = j;
-//             } else if (dist < secondBestDist) {
-//                 secondBestDist = dist;
-//                 secondBestIdx = j;
-//             }
-//         }
-//         if (bestIdx != -1 && secondBestIdx != -1 && bestDist < ratioThreshold * secondBestDist) {
-//             matches.emplace_back(i, bestIdx);
-//         }
-//     }
-//     return matches;
-// }
 
 struct PairHash {
     std::size_t operator()(const std::pair<int, int>& p) const {
@@ -193,6 +153,11 @@ int main(int argc, char** argv) {
     std::cout << "Execution Times (ms):\n"
               << "Custom Binary: " << timeCustomBin << "\n"
               << "OpenCV Binary: " << timeCvBin << "\n";
+    
+    std::vector<std::pair<int, int>> commonBinMatches = findCommonMatches(customBinMatches, cvBinMatches);
+    std::cout << " | Custom Binary Matches: " << customBinMatches.size()
+              << " | CV Binary Matches: " << cvBinMatches.size()
+              << " | Common Binary Matches: " << commonBinMatches.size() << std::endl;
 
     std::vector<cv::DMatch> customBinDMatches = convertToDMatch(customBinMatches);
 
