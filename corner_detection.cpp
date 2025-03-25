@@ -12,16 +12,8 @@
 #include <algorithm>
 #include <iostream>
 #include <queue>
-#include <bit>
 #include <pstl/utils.h>
-//
-// struct point {
-//     size_t x, y;
-// };
 
-// class CornerDetection {
-
-    // public:
 cv::Mat CornerDetection::custom_bgr2gray(cv::Mat& picture) {
     const int n_rows = picture.rows;
     const int n_cols = picture.cols * 3;
@@ -354,9 +346,9 @@ std::vector<std::vector<double>> CornerDetection::shitomasi_corner_detection(cv:
         // }
 
 
-std::vector<std::tuple<int, int, double>> CornerDetection::non_maximum_suppression(std::vector<std::vector<double>> R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
+std::vector<point> CornerDetection::non_maximum_suppression(std::vector<std::vector<double>> R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
     std::priority_queue<std::tuple<double, int, int>> max_heap; // Store (R_value, i, j)
-    std::vector<std::tuple<int, int, double>> output_corners;
+    std::vector<point> output_corners;
     output_corners.reserve(N);
     int count = 0;
 
@@ -365,7 +357,7 @@ std::vector<std::tuple<int, int, double>> CornerDetection::non_maximum_suppressi
 
             // not to include out of bounce for retinal sampling
 
-            if (!((j >= 34) && (j <= n_cols - 34) && (i >= 30) && (i <= n_rows - 30))) {
+            if (!((j >= 35) && (j <= n_cols - 35) && (i >= 31) && (i <= n_rows - 31))) {
                 continue;
             }
 
@@ -391,11 +383,11 @@ std::vector<std::tuple<int, int, double>> CornerDetection::non_maximum_suppressi
     }
 
     for (int i = 0; i < N && !max_heap.empty(); i++) {
-        output_corners.push_back({std::get<1>(max_heap.top()), std::get<2>(max_heap.top()), std::get<0>(max_heap.top())});
+        output_corners.push_back({std::get<1>(max_heap.top()), std::get<2>(max_heap.top())});
         max_heap.pop();
         count++;
     }
-    std::cout << "COunt: " << count << std::endl;
+    std::cout << "COunt: " << count << std::endl; // debug
     return output_corners;
 }
 

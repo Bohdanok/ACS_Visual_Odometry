@@ -8,7 +8,7 @@
 
 #include <iostream>
 
-#define DRAW_A_VISUALIZATION
+// #define DRAW_A_VISUALIZATION
 
 void compare_images(const cv::Mat& image_my, const cv::Mat& image_their, const std::string& win_name) {
 
@@ -59,6 +59,19 @@ void draw_score_distribution(const std::vector<std::vector<double>>& R_values, c
 
 }
 
+void print_descriptor(const std::vector<std::vector<uint8_t>>& descriptor){
+    std::cout << "/////////////////////////////////////////////////////////////" << std::endl;
+    for (size_t i = 0; i < descriptor.size(); i++) {
+        std::cout << "<";
+        for (size_t j = 0; j < descriptor[0].size(); j++) {
+            std::cout << static_cast<int>(descriptor[i][j]) << ", ";
+        }
+        std::cout << ">" << std::endl;
+    }
+    std::cout << "/////////////////////////////////////////////////////////////" << std::endl;
+
+}
+
 int main() {
 
     std::string cur_path = __FILE__;
@@ -100,7 +113,7 @@ int main() {
 
             // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
 
-            cv::circle(image1, cv::Point(std::get<1>(coords), std::get<0>(coords)), 1, cv::Scalar(0, 0, 255), 3);
+            cv::circle(image1, cv::Point(coords.x, coords.y), 1, cv::Scalar(0, 0, 255), 3);
         }
         cv::imshow("BOhdan with corners shi-tomasi", image1);
         cv::imwrite("../test_images/output_images/shi-tomasi_with_corners.png", image1);
@@ -109,7 +122,7 @@ int main() {
         for (auto coords : local_mins_harris) {
             // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
 
-            cv::circle(image2, cv::Point(std::get<1>(coords), std::get<0>(coords)), 1, cv::Scalar(0, 0, 255), 3);
+            cv::circle(image2, cv::Point(coords.x, coords.y), 1, cv::Scalar(0, 0, 255), 3);
         }
         cv::imshow("BOhdan with corners harris", image2);
         cv::imwrite("../test_images/output_images/harris_with_corners.png", image2);
@@ -120,5 +133,9 @@ int main() {
 
 #endif
 
-    std::cout << "Hi from test feature extraction!" << std::endl;
+    auto descriptor = FREAK::FREAK_feature_description(local_mins_shitomasi, blurred, n_cols, n_rows);
+    std::cout << "Hi from test feature extraction before!" << std::endl;
+
+    print_descriptor(descriptor);
+
 }

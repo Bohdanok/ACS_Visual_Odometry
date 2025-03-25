@@ -1,21 +1,17 @@
 //
 // Created by julfy1 on 3/24/25.
 //
+#pragma once
+#ifndef CORNER_DETECTION
+#define CORNER_DETECTION
 
-#ifndef FEATURE_EXTRACTION_H
-#define FEATURE_EXTRACTION_H
-
-#include <opencv2/imgproc.hpp>
 #include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
 #include <string>
 #include <vector>
-#include <tuple>
-#include <queue>
 
-// struct point {
-//     size_t x, y;
-// };
+struct point {
+    int x, y;
+};
 
 class CornerDetection {
 public:
@@ -27,7 +23,7 @@ public:
     static std::vector<std::vector<double>> harris_corner_detection(cv::Mat& Jx, cv::Mat& Jy, cv::Mat& Jxy, const int& n_rows, const int& n_cols, const double& k);
     static std::vector<std::vector<double>> shitomasi_corner_detection(cv::Mat& Jx, cv::Mat& Jy, cv::Mat& Jxy, const int& n_rows, const int& n_cols, const double& k);
     // static void draw_score_distribution(const std::vector<std::vector<double>>& R_values, const std::string& win_name);
-    static std::vector<std::tuple<int, int, double>> non_maximum_suppression(std::vector<std::vector<double>> R_values, const int& n_rows, const int& n_cols, const int& k, const int& N);
+    static std::vector<point> non_maximum_suppression(std::vector<std::vector<double>> R_values, const int& n_rows, const int& n_cols, const int& k, const int& N);
 
 
     // static auto prepare_the_surroundings(const cv::Mat& blurred_gray_picture, const std::vector<int>& key_point, const int& n_cols, const int& n_rows);
@@ -37,4 +33,4 @@ public:
     // static auto prepare_and_test(const std::string& filename, const std::string& cur_path, const std::string& win_name, const bool draw = false);
 };
 
-#endif // FEATURE_EXTRACTION_H
+#endif // CORNER_DETECTION
