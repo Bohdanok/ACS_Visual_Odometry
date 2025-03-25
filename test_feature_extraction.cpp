@@ -134,8 +134,8 @@ int main() {
 #endif
 
     auto descriptor = FREAK::FREAK_feature_description(local_mins_shitomasi, blurred, n_cols, n_rows);
-    std::cout << "Hi from test feature extraction before!" << std::endl;
+    // std::cout << "Hi from test feature extraction before!" << std::endl;
 
-    print_descriptor(descriptor);
+    // print_descriptor(descriptor);
 
 }

@@ -357,7 +357,7 @@ std::vector<point> CornerDetection::non_maximum_suppression(std::vector<std::vec
 
             // not to include out of bounce for retinal sampling
 
-            if (!((j >= 35) && (j <= n_cols - 35) && (i >= 31) && (i <= n_rows - 31))) {
+            if (!((j >= 37) && (j <= n_cols - 37) && (i >= 35) && (i <= n_rows - 35))) {
                 continue;
             }
 
@@ -383,7 +383,7 @@ std::vector<point> CornerDetection::non_maximum_suppression(std::vector<std::vec
     }
 
     for (int i = 0; i < N && !max_heap.empty(); i++) {
-        output_corners.push_back({std::get<1>(max_heap.top()), std::get<2>(max_heap.top())});
+        output_corners.push_back({std::get<2>(max_heap.top()), std::get<1>(max_heap.top())});
         max_heap.pop();
         count++;
     }
