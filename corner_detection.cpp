@@ -387,7 +387,7 @@ std::vector<point> CornerDetection::non_maximum_suppression(std::vector<std::vec
         max_heap.pop();
         count++;
     }
-    std::cout << "COunt: " << count << std::endl; // debug
+    // std::cout << "COunt: " << count << std::endl; // debug
     return output_corners;
 }
 
