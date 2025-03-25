@@ -9,19 +9,6 @@
 #include <vector>
 #include <array>
 
-// constexpr double largets_radius = 2.0 / 3;
-//
-// constexpr double smallest_radius = 2.0 / 24;
-//
-// constexpr double retinal_spacing = (largets_radius - smallest_radius) / 21;
-//
-// const std::vector<double> retinal_keypoint_radii = {largets_radius, largets_radius - 6 * smallest_radius, largets_radius - 11 * smallest_radius,
-//                  largets_radius - 15 * smallest_radius, largets_radius - 18 * smallest_radius,
-//                  largets_radius - 20 * smallest_radius, smallest_radius, 0};
-//
-// const std::vector<double> retinal_distances_from_the_center = {largets_radius / 2.0, (largets_radius - 6 * smallest_radius) / 2.0, (largets_radius - 11 * smallest_radius) / 2.0,
-//              (largets_radius - 15 * smallest_radius) / 2.0, (largets_radius - 18 * smallest_radius) / 2.0,
-//              (largets_radius - 20 * smallest_radius) / 2.0, smallest_radius / 2.0, 0};
 
 #ifndef CORNER_DETECTION
 struct point {
@@ -37,18 +24,6 @@ struct test {
 constexpr size_t NUM_POINTS = 43;
 constexpr size_t NUM_PAIRS = (NUM_POINTS * (NUM_POINTS - 1)) / 2;
 
-// constexpr std::array<point, num_points> generate_points() {
-//     return {{
-//         {33, 0}, {17, -30}, {-17, -30}, {-33, 0}, {-17, 30}, {17, 30},
-//         {22, 13}, {22, -13}, {0, -26}, {-22, -13}, {-22, 13}, {0, 26},
-//         {18, 0}, {9, -17}, {-9, -17}, {-18, 0}, {-9, 17}, {9, 17},
-//         {11, 7}, {11, -7}, {0, -13}, {-11, -7}, {-11, 7}, {0, 13},
-//         {8, 0}, {4, -8}, {-4, -8}, {-8, 0}, {-4, 8}, {4, 8},
-//         {5, 3}, {5, -3}, {0, -6}, {-5, -3}, {-5, 3}, {0, 6},
-//         {4, 0}, {2, -4}, {-2, -4}, {-4, 0}, {-2, 4}, {2, 4},
-//         {0, 0}
-//     }};
-// }
 
 constexpr std::array<point, NUM_POINTS> predefined_point_for_matching = {{
     {33, 0}, {17, -30}, {-17, -30}, {-33, 0}, {-17, 30}, {17, 30},
@@ -76,16 +51,6 @@ constexpr std::array<test, NUM_PAIRS> generate_tests() {
 
 constexpr std::array<test, NUM_PAIRS> test_cases = generate_tests();
 
-
-// const std::vector<std::pair<int, int>> predefined_point_for_matching = {
-//     {33, 0}, {17, -30}, {-17, -30}, {-33, 0}, {-17, 30}, {17, 30},
-//     {22, 13}, {22, -13}, {0, -26}, {-22, -13}, {-22, 13}, {0, 26},
-//     {18, 0}, {9, -17}, {-9, -17}, {-18, 0}, {-9, 17}, {9, 17},
-//     {11, 7}, {11, -7}, {0, -13}, {-11, -7}, {-11, 7}, {0, 13},
-//     {8, 0}, {4, -8}, {-4, -8}, {-8, 0}, {-4, 8}, {4, 8},
-//     {5, 3}, {5, -3}, {0, -6}, {-5, -3}, {-5, 3}, {0, 6},
-//     {4, 0}, {2, -4}, {-2, -4}, {-4, 0}, {-2, 4}, {2, 4},
-//     {0, 0}}; // somebody just use less points for rotation measuring: [(0, 2), (1, 3), (2, 4), (3, 5), (0, 4), (1, 5)]
 
 constexpr std::array<size_t, 512> PATCH_DESCRIPTION_POINTS =
     {
