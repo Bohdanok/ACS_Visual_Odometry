@@ -103,9 +103,7 @@ public:
             Eigen::Vector3d p1(pair.first.x, pair.first.y, 1.0);
             Eigen::Vector3d p2(pair.second.x, pair.second.y, 1.0);
             double error = std::abs(p2.transpose() * F * p1);
-            if (error < threshold) {
-                inliers++;
-            }
+            inliers += error < threshold;
         }
         return inliers;
     }
@@ -119,23 +117,23 @@ class Ransac {
 public:
     static void run(FundamentalMatrix& model, std::vector<std::pair<Point, Point>>& data, double probability, double threshold) {
         int N = data.size();
-        double w = 0.5;
+        double outlier_ratio = 0.5;
         int sampleSize = 8;
         int bestInliers = 0;
         std::srand(std::time(0));
-        int maxIterations = std::log(1 - probability) / std::log(1 - std::pow(w, sampleSize));
+        int maxIterations = std::log(1 - probability) / std::log(1 - std::pow(outlier_ratio, sampleSize));
 
+        std::sample(data.begin(), data.end(), std::back_inserter(sample), sampleSize, std::mt19937{std::random_device{}()});
         for (int i = 0; i < maxIterations; ++i) {
             std::vector<std::pair<Point, Point>> sample;
-            std::sample(data.begin(), data.end(), std::back_inserter(sample), sampleSize, std::mt19937{std::random_device{}()});
 
             model.fit(sample);
             int inliers = model.countInliers(data, threshold);
 
             if (inliers > bestInliers) {
                 bestInliers = inliers;
-                w = static_cast<double>(inliers) / N;
-                maxIterations = std::log(1 - probability) / std::log(1 - std::pow(w, sampleSize));
+                outlier_ratio = static_cast<double>(inliers) / N;
+                maxIterations = std::log(1 - probability) / std::log(1 - std::pow(outlier_ratio, sampleSize));
             }
         }
 
