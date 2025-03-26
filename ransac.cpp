@@ -3,6 +3,9 @@
 #include <Eigen/Dense>
 #include <random>
 #include <algorithm>
+#include <opencv2/opencv.hpp>
+#include <opencv2/features2d.hpp>
+#include <opencv2/xfeatures2d.hpp>
 
 struct Point {
     double x, y;
@@ -26,23 +29,19 @@ private:
                         p2.x(), p2.y(), 1;
         }
 
-        // Solve Af = 0 using SVD
         Eigen::JacobiSVD<Eigen::MatrixXd> svd(A, Eigen::ComputeFullV);
         Eigen::VectorXd f = svd.matrixV().col(8);
 
-        // Form the normalized Fundamental Matrix
         Eigen::Matrix3d F;
         F << f(0), f(1), f(2),
              f(3), f(4), f(5),
              f(6), f(7), f(8);
 
-        // Denormalize F
         F = T2.transpose() * F * T1;
 
-        // Enforce rank 2 constraint AFTER denormalization
         Eigen::JacobiSVD<Eigen::Matrix3d> svdF(F, Eigen::ComputeFullU | Eigen::ComputeFullV);
         Eigen::Vector3d singularValues = svdF.singularValues();
-        singularValues(2) = 0; // Force smallest singular value to be 0
+        singularValues(2) = 0;
         F = svdF.matrixU() * singularValues.asDiagonal() * svdF.matrixV().transpose();
 
         Eigen::JacobiSVD<Eigen::Matrix3d> checkSVD(F, Eigen::ComputeFullU | Eigen::ComputeFullV);
@@ -94,6 +93,10 @@ public:
         F = computeFundamentalMatrix(sample);
     }
 
+    Eigen::Matrix3d getMatrix() const {
+        return F;
+    }
+
     int countInliers(const std::vector<std::pair<Point, Point>>& data, double threshold) const {
         int inliers = 0;
         for (const auto& pair : data) {
@@ -141,13 +144,121 @@ public:
     }
 };
 
+//for testing
+
+int hammingDistance(const uint8_t* d1, const uint8_t* d2, int length) {
+    int distance = 0;
+    int i = 0;
+
+    for (; i + 4 <= length; i += 4) {
+        uint32_t v1, v2;
+        std::memcpy(&v1, d1 + i, sizeof(uint32_t));
+        std::memcpy(&v2, d2 + i, sizeof(uint32_t));
+        distance += __builtin_popcount(v1 ^ v2);
+    }
+
+    for (; i < length; ++i) {
+        distance += __builtin_popcount(d1[i] ^ d2[i]);
+    }
+
+    return distance;
+}
+
+    std::vector<std::pair<int, int>> matchBinaryKeypoints(
+    const cv::Mat& descriptors1,
+    const cv::Mat& descriptors2,
+    float ratioThreshold = 0.75f)
+{
+    std::vector<std::pair<int, int>> pointMatches;
+    for (int i = 0; i < descriptors1.rows; ++i) {
+        int bestIdx = -1, secondBestIdx = -1;
+        int bestDist = std::numeric_limits<int>::max();
+        int secondBestDist = std::numeric_limits<int>::max();
+        const uint8_t* desc1 = descriptors1.ptr<uint8_t>(i);
+
+        for (int j = 0; j < descriptors2.rows; ++j) {
+            const uint8_t* desc2 = descriptors2.ptr<uint8_t>(j);
+            int dist = hammingDistance(desc1, desc2, descriptors1.cols);
+
+            if (dist < bestDist) {
+                secondBestDist = bestDist;
+                secondBestIdx = bestIdx;
+                bestDist = dist;
+                bestIdx = j;
+            } else if (dist < secondBestDist) {
+                secondBestDist = dist;
+                secondBestIdx = j;
+            }
+        }
+
+        if (bestIdx != -1 && secondBestIdx != -1 && bestDist < ratioThreshold * secondBestDist) {
+            pointMatches.emplace_back(i, bestIdx);
+        }
+    }
+    return pointMatches;
+}
+
+int checkRank(const Eigen::MatrixXd& matrix) {
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(matrix, Eigen::ComputeFullU | Eigen::ComputeFullV);
+    Eigen::VectorXd singularValues = svd.singularValues();
+    int rank = (singularValues.array() > 1e-10).count();
+    std::cout << "Singular values: " << singularValues.transpose() << std::endl;
+    std::cout << "Rank of the matrix: " << rank << std::endl;
+
+    return rank;
+}
+
+
 int main() {
-    std::vector<std::pair<Point, Point>> data = {{{1, 2}, {2, 3}}, {{2, 3}, {3, 4}}, {{3, 4}, {4, 5}},
-                                                 {{4, 5}, {5, 6}}, {{5, 6}, {6, 7}}, {{10, 15}, {15, 20}},
-                                                 {{15, 20}, {20, 25}}, {{30, 40}, {35, 45}}};
+    cv::Mat img1 = cv::imread("./first.png", cv::IMREAD_GRAYSCALE);
+    cv::Mat img2 = cv::imread("./second.png", cv::IMREAD_GRAYSCALE);
+
+    cv::Ptr<cv::BRISK> brisk = cv::BRISK::create();
+
+    std::vector<cv::KeyPoint> briskKps1, briskKps2;
+    cv::Mat briskDesc1, briskDesc2;
+
+    brisk->detectAndCompute(img1, cv::noArray(), briskKps1, briskDesc1);
+    brisk->detectAndCompute(img2, cv::noArray(), briskKps2, briskDesc2);
+
+    auto matches = matchBinaryKeypoints(briskDesc1, briskDesc2);
+
+    std::vector<std::pair<Point, Point>> matchedPoints;
+    for (const auto& match : matches) {
+        Point p1 = {briskKps1[match.first].pt.x, briskKps1[match.first].pt.y};
+        Point p2 = {briskKps2[match.second].pt.x, briskKps2[match.second].pt.y};
+
+        matchedPoints.push_back({p1, p2});
+    }
 
     FundamentalMatrix fundamentalModel;
-    Ransac::run(fundamentalModel, data, 0.99, 1.0);
+    Ransac::run(fundamentalModel, matchedPoints, 0.99, 1.0);
+
+    int number_of_correct_constraints = 0;
+    int number_of_incorrect_constraints = 0;
+    for (const auto& pair : matchedPoints) {
+        Point x = pair.first;
+        Point x_prime = pair.second;
+
+        Eigen::Vector3d x_h(x.x, x.y, 1.0);
+        Eigen::Vector3d x_prime_h(x_prime.x, x_prime.y, 1.0);
+
+        Eigen::Matrix3d F = fundamentalModel.getMatrix();
+
+        double value = x_prime_h.transpose() * F * x_h;
+
+        if (std::abs(value) > 1) {
+            number_of_incorrect_constraints++;
+        } else {
+            number_of_correct_constraints++;
+        }
+    }
+
+    std::cout << "Epipolar constraint value (x'^T F x = 0) correct: " << number_of_correct_constraints << "\n";
+    std::cout << "Epipolar constraint value (x'^T F x = 0) incorrect: " << number_of_incorrect_constraints << "\n";
+
+    int rank = checkRank(fundamentalModel.getMatrix());
+    std::cout << "Rank of F: " << rank << std::endl;
 
     return 0;
 }
