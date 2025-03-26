@@ -123,11 +123,11 @@ public:
         std::srand(std::time(0));
         int maxIterations = std::log(1 - probability) / std::log(1 - std::pow(outlier_ratio, sampleSize));
 
+        std::vector<std::pair<Point, Point>> sample;
         std::sample(data.begin(), data.end(), std::back_inserter(sample), sampleSize, std::mt19937{std::random_device{}()});
-        for (int i = 0; i < maxIterations; ++i) {
-            std::vector<std::pair<Point, Point>> sample;
+        model.fit(sample);
 
-            model.fit(sample);
+        for (int i = 0; i < maxIterations; ++i) {
             int inliers = model.countInliers(data, threshold);
 
             if (inliers > bestInliers) {
