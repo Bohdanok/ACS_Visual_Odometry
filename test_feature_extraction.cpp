@@ -91,82 +91,84 @@ std::vector<std::vector<uint8_t>> descriptor_for_s_pop(const std::string& filena
 
     auto shitomasi_corners = CornerDetection::shitomasi_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.05);
 
-    auto local_mins_shitomasi = CornerDetection::non_maximum_suppression(shitomasi_corners, n_rows, n_cols, 20, 1500);
+    auto local_mins_shitomasi = CornerDetection::non_maximum_suppression(shitomasi_corners, n_rows, n_cols, 5, 1500);
+
+    std::cout << "Number of keypoints: " << local_mins_shitomasi.size() << std::endl;
 
     auto descriptor = FREAK::FREAK_feature_description(local_mins_shitomasi, blurred, n_cols, n_rows);
 
     return descriptor;
 }
-int main() {
-
-    std::string cur_path = __FILE__;
-    cur_path = cur_path.erase(cur_path.length() - 27); //weird staff
-    std::string test_file = "test_images/Zhovkva2.jpg";
-    std::string test_image = cur_path + test_file;
-
-
-    auto descriptor = descriptor_for_s_pop(test_image);
-
-    print_descriptor(descriptor);
-
-    // cv::Mat image1 = cv::imread(cur_path + test_file);
-    //
-    // cv::Mat image2 = cv::imread(cur_path + test_file);
-
-
-    // cv::Mat my_blurred_gray;
-    //
-    // const cv::Mat blurred = CornerDetection::custom_bgr2gray(image1);
-
-    // cv::GaussianBlur(blurred, my_blurred_gray, cv::Size(7, 7), 0);
-    // std::cout << "Hi";
-    // int n_rows = my_blurred_gray.rows;
-    // int n_cols = my_blurred_gray.cols;
-
-    // auto gradients = CornerDetection::direction_gradients(my_blurred_gray, n_rows, n_cols);
-    //
-    // auto harris_corners = CornerDetection::harris_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.05);
-    //
-    // auto shitomasi_corners = CornerDetection::shitomasi_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.05);
-    //
-    // auto local_mins_shitomasi = CornerDetection::non_maximum_suppression(shitomasi_corners, n_rows, n_cols, 20, 1500);
-    //
-    // auto local_mins_harris = CornerDetection::non_maximum_suppression(harris_corners, n_rows, n_cols, 20, 1500);
-    //
-    // draw_score_distribution(harris_corners, "harris");
-    //
-    // draw_score_distribution(shitomasi_corners, "shi-tomasi");
-
-    // FREAK::FREAK_feature_description(local_mins_shitomasi, blurred, n_cols, n_rows, 0.5);
-    #ifdef DRAW_A_VISUALIZATION
-
-        for (auto coords : local_mins_shitomasi) {
-
-            // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
-
-            cv::circle(image1, cv::Point(coords.x, coords.y), 1, cv::Scalar(0, 0, 255), 3);
-        }
-        cv::imshow("BOhdan with corners shi-tomasi", image1);
-        cv::imwrite("../test_images/output_images/shi-tomasi_with_corners.png", image1);
-
-
-        for (auto coords : local_mins_harris) {
-            // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
-
-            cv::circle(image2, cv::Point(coords.x, coords.y), 1, cv::Scalar(0, 0, 255), 3);
-        }
-        cv::imshow("BOhdan with corners harris", image2);
-        cv::imwrite("../test_images/output_images/harris_with_corners.png", image2);
-
-    cv::waitKey(0);
-
-    cv::destroyAllWindows();
-
-#endif
-
-    // auto descriptor = FREAK::FREAK_feature_description(local_mins_shitomasi, blurred, n_cols, n_rows);
-    // std::cout << "Hi from test feature extraction before!" << std::endl;
-
-    // print_descriptor(descriptor);
-
-}
+// int main() {
+//
+//     std::string cur_path = __FILE__;
+//     cur_path = cur_path.erase(cur_path.length() - 27); //weird staff
+//     std::string test_file = "test_images/Zhovkva2.jpg";
+//     std::string test_image = cur_path + test_file;
+//
+//
+//     auto descriptor = descriptor_for_s_pop(test_image);
+//
+//     print_descriptor(descriptor);
+//
+//    // cv::Mat image1 = cv::imread(cur_path + test_file);
+//    //
+//    // cv::Mat image2 = cv::imread(cur_path + test_file);
+//
+//
+//    // cv::Mat my_blurred_gray;
+//    //
+//    // const cv::Mat blurred = CornerDetection::custom_bgr2gray(image1);
+//
+//    // cv::GaussianBlur(blurred, my_blurred_gray, cv::Size(7, 7), 0);
+//    // std::cout << "Hi";
+//    // int n_rows = my_blurred_gray.rows;
+//    // int n_cols = my_blurred_gray.cols;
+//
+//    // auto gradients = CornerDetection::direction_gradients(my_blurred_gray, n_rows, n_cols);
+//    //
+//    // auto harris_corners = CornerDetection::harris_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.05);
+//    //
+//    // auto shitomasi_corners = CornerDetection::shitomasi_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.05);
+//    //
+//    // auto local_mins_shitomasi = CornerDetection::non_maximum_suppression(shitomasi_corners, n_rows, n_cols, 20, 1500);
+//    //
+//    // auto local_mins_harris = CornerDetection::non_maximum_suppression(harris_corners, n_rows, n_cols, 20, 1500);
+//    //
+//    // draw_score_distribution(harris_corners, "harris");
+//    //
+//    // draw_score_distribution(shitomasi_corners, "shi-tomasi");
+//
+//    // FREAK::FREAK_feature_description(local_mins_shitomasi, blurred, n_cols, n_rows, 0.5);
+//    #ifdef DRAW_A_VISUALIZATION
+//
+//        for (auto coords : local_mins_shitomasi) {
+//
+//            // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
+//
+//            cv::circle(image1, cv::Point(coords.x, coords.y), 1, cv::Scalar(0, 0, 255), 3);
+//        }
+//        cv::imshow("BOhdan with corners shi-tomasi", image1);
+//        cv::imwrite("../test_images/output_images/shi-tomasi_with_corners.png", image1);
+//
+//
+//        for (auto coords : local_mins_harris) {
+//            // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
+//
+//            cv::circle(image2, cv::Point(coords.x, coords.y), 1, cv::Scalar(0, 0, 255), 3);
+//        }
+//        cv::imshow("BOhdan with corners harris", image2);
+//        cv::imwrite("../test_images/output_images/harris_with_corners.png", image2);
+//
+//    cv::waitKey(0);
+//
+//    cv::destroyAllWindows();
+//
+//#endif
+//
+//    // auto descriptor = FREAK::FREAK_feature_description(local_mins_shitomasi, blurred, n_cols, n_rows);
+//    // std::cout << "Hi from test feature extraction before!" << std::endl;
+//
+//    // print_descriptor(descriptor);
+//
+// }
