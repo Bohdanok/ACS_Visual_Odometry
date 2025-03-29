@@ -1,4 +1,4 @@
-
+#include <cstring>
 #include <iostream>
 #include <vector>
 #include <unordered_set>
@@ -25,9 +25,19 @@ get_current_time_fenced()
 
 int hammingDistance(const uint8_t* d1, const uint8_t* d2, int length) {
     int distance = 0;
-    for (int i = 0; i < length; ++i) {
-        distance += std::bitset<8>(d1[i] ^ d2[i]).count();
+    int i = 0;
+
+    for (; i + 4 <= length; i += 4) {
+        uint32_t v1, v2;
+        std::memcpy(&v1, d1 + i, sizeof(uint32_t));
+        std::memcpy(&v2, d2 + i, sizeof(uint32_t));
+        distance += __builtin_popcount(v1 ^ v2);
     }
+
+    for (; i < length; ++i) {
+        distance += __builtin_popcount(d1[i] ^ d2[i]);
+    }
+
     return distance;
 }
 
