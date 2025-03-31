@@ -9,7 +9,9 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
 #include <opencv2/xfeatures2d.hpp>
-#include "test_feature_extraction.h"
+#include "feature_extraction/test_feature_extraction.h"
+
+#define VISUALIZATION
 
 const int BINARY_DESCRIPTOR_SIZE = 32;
 const double MATCH_THRESHOLD = 0.5;
@@ -168,12 +170,15 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    std::vector<std::vector<uint8_t>> descs1 = descriptor_for_s_pop(argv[1]);
-    std::vector<std::vector<uint8_t>> descs2 = descriptor_for_s_pop(argv[2]);
+    // std::vector<std::vector<uint8_t>> descs1 = descriptor_for_s_pop(argv[1]);
+    // std::vector<std::vector<uint8_t>> descs2 = descriptor_for_s_pop(argv[2]);
+
+    auto descs1 = descriptor_with_points(argv[1]);
+    auto descs2 = descriptor_with_points(argv[2]);
 
     std::vector<std::pair<int, int>> customMatches;
     auto start = get_current_time_fenced();
-    customMatches = matchCustomBinaryDescriptorsParallel(descs1, descs2);
+    customMatches = matchCustomBinaryDescriptorsParallel(std::get<0>(descs1), std::get<0>(descs2));
     auto end = get_current_time_fenced();
     std::cout << "Time: "
               << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
@@ -182,12 +187,12 @@ int main(int argc, char** argv) {
 
     std::cout << "Custom binary matches: " << customMatches.size() << std::endl;
 //    std::cout << "Is 1 object" << (customMatches.size() == MATCH_THRESHOLD * ? "yes" : " not");
-
-    // cv::Mat binaryMatchesImg;
-    // cv::drawMatches(img1, briskKps1, img2, briskKps2, customMatches, binaryMatchesImg);
-    //
-    // cv::imshow("BRISK Matches", binaryMatchesImg);
-    // cv::waitKey(0);
+#ifdef VISUALIZATION
+    cv::Mat binaryMatchesImg;
+    cv::drawMatches(img1, std::get<1>(descs1), img2, std::get<1>(descs2), convertToDMatch(customMatches), binaryMatchesImg);
+    cv::imshow("BRISK Matches", binaryMatchesImg);
+    cv::waitKey(0);
+#endif
 
     return 0;
 }

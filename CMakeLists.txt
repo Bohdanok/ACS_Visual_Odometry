@@ -4,14 +4,14 @@ project(FeatureExtraction)
 find_package(OpenCV REQUIRED)
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(corner_detection corner_detection.cpp corner_detection.h)
+add_executable(corner_detection feature_extraction/corner_detection.cpp feature_extraction/corner_detection.h)
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 
 target_include_directories(corner_detection PRIVATE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(corner_detection PRIVATE ${OpenCV_LIBS})
 
 
-add_executable(FREAK_feature_description FREAK_feature_descriptor.cpp FREAK_feature_descriptor.h)
+add_executable(FREAK_feature_description feature_extraction/FREAK_feature_descriptor.cpp feature_extraction/FREAK_feature_descriptor.h)
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
@@ -22,18 +22,18 @@ target_link_libraries(FREAK_feature_description PRIVATE ${OpenCV_LIBS})
 
 
 
-add_executable(test_feature_extraction  test_feature_extraction.cpp test_feature_extraction.h
-        corner_detection.cpp corner_detection.h
-        FREAK_feature_descriptor.cpp
-        FREAK_feature_descriptor.h
+add_executable(test_feature_extraction_with_matching feature_extraction/test_feature_extraction.cpp feature_extraction/test_feature_extraction.h
+        feature_extraction/corner_detection.cpp feature_extraction/corner_detection.h
+        feature_extraction/FREAK_feature_descriptor.cpp
+        feature_extraction/FREAK_feature_descriptor.h
         matching.cpp)
 
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 #set(CMAKE_BUILD_TYPE Debug)  # Ensures debugging symbols are included
 #set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")  # Adds debugging flags (no optimization)
 
-target_include_directories(test_feature_extraction PRIVATE ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(test_feature_extraction PRIVATE ${OpenCV_LIBS})
+target_include_directories(test_feature_extraction_with_matching PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(test_feature_extraction_with_matching PRIVATE ${OpenCV_LIBS})
 
 
 

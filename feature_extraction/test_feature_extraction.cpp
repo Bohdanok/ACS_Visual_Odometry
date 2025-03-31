@@ -128,6 +128,35 @@ std::vector<std::vector<uint8_t>> descriptor_with_keypoints(const std::string& f
     return descriptor;
 }
 
+std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> descriptor_with_points(const std::string& filename) {
+
+    cv::Mat image1 = cv::imread(filename);
+
+    cv::Mat image2 = cv::imread(filename);
+
+    cv::Mat my_blurred_gray;
+
+    const cv::Mat blurred = CornerDetection::custom_bgr2gray(image1);
+
+    cv::GaussianBlur(blurred, my_blurred_gray, cv::Size(7, 7), 0);
+
+    int n_rows = my_blurred_gray.rows;
+    int n_cols = my_blurred_gray.cols;
+
+    auto gradients = CornerDetection::direction_gradients(my_blurred_gray, n_rows, n_cols);
+
+    auto shitomasi_corners = CornerDetection::shitomasi_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.05);
+
+    auto local_mins_shitomasi = CornerDetection::non_maximum_suppression(shitomasi_corners, n_rows, n_cols, 5, 1500);
+
+    std::cout << "Number of keypoints: " << local_mins_shitomasi.size() << std::endl;
+
+    auto descriptor = FREAK::FREAK_feature_description(local_mins_shitomasi, blurred, n_cols, n_rows);
+
+    return {descriptor, local_mins_shitomasi};
+
+}
+
 
 // int main() {
 //
