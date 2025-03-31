@@ -140,8 +140,8 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> descript
 
     cv::GaussianBlur(blurred, my_blurred_gray, cv::Size(7, 7), 0);
 
-    int n_rows = my_blurred_gray.rows;
-    int n_cols = my_blurred_gray.cols;
+    const int n_rows = my_blurred_gray.rows;
+    const int n_cols = my_blurred_gray.cols;
 
     auto gradients = CornerDetection::direction_gradients(my_blurred_gray, n_rows, n_cols);
 
