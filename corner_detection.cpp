@@ -296,9 +296,9 @@ std::vector<std::vector<double>> CornerDetection::shitomasi_corner_detection(cv:
 }
 
 
-std::vector<point> CornerDetection::non_maximum_suppression(std::vector<std::vector<double>> R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
+std::vector<cv::KeyPoint> CornerDetection::non_maximum_suppression(std::vector<std::vector<double>> R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
     std::priority_queue<std::tuple<double, int, int>> max_heap; // Store (R_value, i, j)
-    std::vector<point> output_corners;
+    std::vector<cv::KeyPoint> output_corners;
     output_corners.reserve(N);
     int count = 0;
 
@@ -333,7 +333,7 @@ std::vector<point> CornerDetection::non_maximum_suppression(std::vector<std::vec
     }
 
     for (int i = 0; i < N && !max_heap.empty(); i++) {
-        output_corners.push_back({std::get<2>(max_heap.top()), std::get<1>(max_heap.top())});
+        output_corners.push_back({cv::Point2f(static_cast<float>(std::get<2>(max_heap.top())), static_cast<float>(std::get<1>(max_heap.top()))), 1.0f});
         max_heap.pop();
         count++;
     }

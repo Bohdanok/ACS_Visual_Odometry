@@ -10,15 +10,15 @@
 #include <array>
 
 
-#ifndef CORNER_DETECTION
+// #ifndef CORNER_DETECTION
 struct point {
     int x, y;
 };
-#endif
+// #endif
 
 
 struct test {
-    point point1, point2;
+    cv::KeyPoint point1, point2;
 };
 
 constexpr size_t NUM_POINTS = 43;
@@ -36,20 +36,21 @@ constexpr std::array<point, NUM_POINTS> predefined_point_for_matching = {{
     {0, 0}
 }};
 
-constexpr std::array<test, NUM_PAIRS> generate_tests() {
+inline std::array<test, NUM_PAIRS> generate_tests() {
     std::array<test, NUM_PAIRS> result{};
     size_t index = 0;
 
     for (size_t i = 0; i < NUM_POINTS; i++) {
         for (size_t j = i + 1; j < NUM_POINTS; j++) {
-            result[index++] = {predefined_point_for_matching[i], predefined_point_for_matching[j]};
+            result[index++] = {cv::KeyPoint(cv::Point2f(static_cast<float>(predefined_point_for_matching[i].x), static_cast<float>(predefined_point_for_matching[i].y)), 1.0f),
+                   cv::KeyPoint(cv::Point2f(static_cast<float>(predefined_point_for_matching[j].x), static_cast<float>(predefined_point_for_matching[j].y)), 1.0f)};
         }
     }
 
     return result;
 }
 
-constexpr std::array<test, NUM_PAIRS> test_cases = generate_tests();
+static std::array<test, NUM_PAIRS> test_cases = generate_tests();
 
 
 constexpr std::array<size_t, 512> PATCH_DESCRIPTION_POINTS =
@@ -98,9 +99,9 @@ constexpr size_t DESCRIPTOR_SIZE = PATCH_DESCRIPTION_POINTS.size();
 class FREAK {
 public:
     // static auto prepare_the_surroundings(const cv::Mat& blurred_gray_picture, const std::vector<int>& key_point, const int& n_cols, const int& n_rows);
-    static double compute_orientation(point point, cv::Mat& image, const int& n_cols, const int& n_rows);
-    static void add_transposed_vector(std::vector<std::vector<int>>& array, const std::vector<double>& add_vector, const size_t index, const size_t num_of_keypoints);
-    static std::vector<std::vector<uint8_t>> FREAK_feature_description(const std::vector<point>& key_points, cv::Mat blurred_gray_picture, const int& n_cols, const int& n_rows, const double corr_threshold = 0.5);
+    static double compute_orientation(cv::KeyPoint point, cv::Mat& image, const int& n_cols, const int& n_rows);
+    // static void add_transposed_vector(std::vector<std::vector<int>>& array, const std::vector<double>& add_vector, const size_t index, const size_t num_of_keypoints);
+    static std::vector<std::vector<uint8_t>> FREAK_feature_description(const std::vector<cv::KeyPoint>& key_points, cv::Mat blurred_gray_picture, const int& n_cols, const int& n_rows, const double corr_threshold = 0.5);
 
     // static void FREAK_feature_description(const std::vector<std::tuple<int, int, double>>& key_points, cv::Mat blurred_gray_picture, const int& n_cols, const int& n_rows, const double corr_threshold);
     // static auto prepare_and_test(const std::string& filename, const std::string& cur_path, const std::string& win_name, const bool draw = false);

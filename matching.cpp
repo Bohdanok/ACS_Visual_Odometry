@@ -183,5 +183,11 @@ int main(int argc, char** argv) {
     std::cout << "Custom binary matches: " << customMatches.size() << std::endl;
 //    std::cout << "Is 1 object" << (customMatches.size() == MATCH_THRESHOLD * ? "yes" : " not");
 
+    // cv::Mat binaryMatchesImg;
+    // cv::drawMatches(img1, briskKps1, img2, briskKps2, customMatches, binaryMatchesImg);
+    //
+    // cv::imshow("BRISK Matches", binaryMatchesImg);
+    // cv::waitKey(0);
+
     return 0;
 }
