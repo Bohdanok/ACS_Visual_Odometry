@@ -10,9 +10,7 @@
 #include <string>
 #include <cmath>
 #include <algorithm>
-#include <iostream>
 #include <queue>
-#include <pstl/utils.h>
 
 cv::Mat CornerDetection::custom_bgr2gray(cv::Mat& picture) {
     const int n_rows = picture.rows;
@@ -284,7 +282,7 @@ std::vector<std::vector<double>> CornerDetection::shitomasi_corner_detection(cv:
     for (int i = 2; i < n_rows - 2; i++) {
         for (int j = 2; j < n_cols - 2; j++) {
 
-            if (R_array[i][j] <= threshold) {
+            if (R_array[i][j] <= threshold) { // put the bound for patch checking here
                     // std::cout << "R > " << threshold << ": (" << i << ", " << j << ")" << std::endl;
                     R_array[i][j] = 0;
             }

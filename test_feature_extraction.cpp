@@ -91,7 +91,7 @@ std::vector<std::vector<uint8_t>> descriptor_for_s_pop(const std::string& filena
 
     auto shitomasi_corners = CornerDetection::shitomasi_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.05);
 
-    auto local_mins_shitomasi = CornerDetection::non_maximum_suppression(shitomasi_corners, n_rows, n_cols, 20, 1500);
+    auto local_mins_shitomasi = CornerDetection::non_maximum_suppression(shitomasi_corners, n_rows, n_cols, 5, 1500);
 
     auto descriptor = FREAK::FREAK_feature_description(local_mins_shitomasi, blurred, n_cols, n_rows);
 
