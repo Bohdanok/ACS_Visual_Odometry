@@ -13,15 +13,11 @@
 // #define VISUALIZATION
 
 void response_worker(const cv::Mat& blurred_gray, const interval& interval, cv::Mat& Jx, cv::Mat& Jy, cv::Mat& Jxy, std::vector<std::vector<double>>& R_array) {
-    // std::vector<cv::KeyPoint> key_points;
 
     CornerDetectionParallel::direction_gradients_worker(blurred_gray, interval, Jx, Jy, Jxy);
 
     CornerDetectionParallel::shitomasi_corner_detection_worker(Jx, Jy, Jxy, interval, 0.05, R_array);
 
-    // const    std::vector<std::future<std::vector<uint8_t>>> future_descriptor();
-
-    // return true;
 
 }
 
@@ -48,10 +44,9 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(cv::Mat& image, thr
     std::vector<std::vector<double>> R_array(n_rows, std::vector<double>(n_cols, 0));
 
 
-    // std::vector<interval> intervals;
     std::vector<std::future<void>> futures_responses;
     std::vector<std::future<void>> futures_descriptor;
-    //     std::vector<std::vector<uint8_t>> descriptor(num_of_keypoints, std::vector<uint8_t>(DESCRIPTOR_SIZE));
+
 
     for (int i = 0; i < n_rows; i += BLOCK_SIZE) {
         for (int j = 0; j < n_cols; j += BLOCK_SIZE) {
@@ -72,8 +67,6 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(cv::Mat& image, thr
 
     size_t cur_index = 0;
     const size_t num_of_keypoints = local_mins_shitomasi.size();
-    // std::vector<std::future<std::vector<uint8_t>>> future_descriptor(num_of_keypoints, std::future<std::vector<uint8_t>(DESCRIPTOR_SIZE)>);
-    // std::vector<std::future<std::vector<uint8_t>>> future_descriptor(num_of_keypoints);
 
     std::vector<std::vector<uint8_t>> descriptor(num_of_keypoints, std::vector<uint8_t>(DESCRIPTOR_SIZE));
 
@@ -110,7 +103,6 @@ int main() {
     const std::string filename = "/home/julfy1/Documents/4th_term/ACS/ACS_Visual_Odometry_SOFIA/ACS_Visual_Odometry/images/Zhovkva2.jpg";
 
     cv::Mat image = cv::imread(filename);
-    // cv::Mat image1 = cv::imread(filename);
 
 
     thread_pool pool(NUMBER_OF_THREADS);
@@ -118,19 +110,6 @@ int main() {
     auto descriptor = feature_extraction_manager(image, pool);
 
     print_descriptor(descriptor);
-
-    // std::vector<cv::KeyPoint> key_points;
-    // for (auto &future : key_points_futures) {
-    //     std::vector<cv::KeyPoint> block_corners = future.get();
-    //     key_points.insert(key_points.end(), block_corners.begin(), block_corners.end());
-    // }
-    // for (auto &future : key_points_futures) {
-    //     future.get();
-    // }
-
-    // auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 15000);
-
-
 
 
 

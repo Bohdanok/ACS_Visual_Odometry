@@ -10,12 +10,9 @@
 #include <variant>
 #include <vector>
 
-// struct point {
-//     int x, y;
-// };
 
-constexpr size_t NUMBER_OF_THREADS = 3;
-constexpr int BLOCK_SIZE = 20;
+constexpr size_t NUMBER_OF_THREADS = 10;
+constexpr int BLOCK_SIZE = 50;
 constexpr double RESPONSE_THRESHOLD = 25000;
 
 struct bound2d {
@@ -26,11 +23,6 @@ struct interval {
     bound2d cols, rows;
 };
 
-enum WORKER_FUNCTION {
-    COMPUTE_CORNERS,
-    COMPUTE_LOCAL_MINS,
-    COMPUTE_DESCRIPTORS
-};
 
 using work_result = std::variant<bool, std::vector<cv::KeyPoint>, std::vector<std::vector<uint8_t>>>;
 

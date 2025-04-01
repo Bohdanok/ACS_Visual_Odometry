@@ -10,7 +10,6 @@
 #include <string>
 #include <cmath>
 #include <queue>
-// #include <pstl/utils.h>
 
 cv::Mat CornerDetectionParallel::custom_bgr2gray(cv::Mat& picture) {
     const int n_rows = picture.rows;
@@ -147,6 +146,5 @@ std::vector<cv::KeyPoint> CornerDetectionParallel::non_maximum_suppression(const
         max_heap.pop();
         count++;
     }
-    // std::cout << "COunt: " << count << std::endl; // debug
     return output_corners;
 }

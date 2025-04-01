@@ -9,12 +9,18 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
 #include <opencv2/xfeatures2d.hpp>
-#include "feature_extraction/test_feature_extraction.h"
+
+#ifdef PARALLEL_IMPLEMENTATION
+    #include "feature_extraction_parallel/feature_extraction_parallel.h"
+#else
+    #include "feature_extraction/test_feature_extraction.h"
+#endif
+
 
 #define VISUALIZATION
 
-const int BINARY_DESCRIPTOR_SIZE = 32;
-const double MATCH_THRESHOLD = 0.5;
+constexpr int BINARY_DESCRIPTOR_SIZE = 32;
+constexpr double MATCH_THRESHOLD = 0.5;
 
 inline std::chrono::high_resolution_clock::time_point
 get_current_time_fenced()
@@ -172,14 +178,30 @@ int main(int argc, char** argv) {
 
     // std::vector<std::vector<uint8_t>> descs1 = descriptor_for_s_pop(argv[1]);
     // std::vector<std::vector<uint8_t>> descs2 = descriptor_for_s_pop(argv[2]);
+#ifdef PARALLEL_IMPLEMENTATION
+    cv::Mat image1 = cv::imread(argv[1]);
+    cv::Mat image2 = cv::imread(argv[2]);
 
+    thread_pool pool1(NUMBER_OF_THREADS);
+    thread_pool pool2(NUMBER_OF_THREADS);
+
+    auto descs1 = feature_extraction_manager_with_points(image1, pool1);
+    auto descs2 = feature_extraction_manager_with_points(image1, pool2);
+
+#else
     auto descs1 = descriptor_with_points(argv[1]);
     auto descs2 = descriptor_with_points(argv[2]);
+#endif
+
+
 
     std::vector<std::pair<int, int>> customMatches;
     auto start = get_current_time_fenced();
     customMatches = matchCustomBinaryDescriptorsParallel(std::get<0>(descs1), std::get<0>(descs2));
     auto end = get_current_time_fenced();
+
+    // std::cout <<
+
     std::cout << "Time: "
               << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
               << " ms" << std::endl;
@@ -190,7 +212,7 @@ int main(int argc, char** argv) {
 #ifdef VISUALIZATION
     cv::Mat binaryMatchesImg;
     cv::drawMatches(img1, std::get<1>(descs1), img2, std::get<1>(descs2), convertToDMatch(customMatches), binaryMatchesImg);
-    cv::imshow("BRISK Matches", binaryMatchesImg);
+    cv::imshow("FREAK Matches", binaryMatchesImg);
     cv::waitKey(0);
 #endif
 

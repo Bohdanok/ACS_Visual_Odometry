@@ -75,10 +75,6 @@ void FREAK_Parallel::FREAK_feature_description(const std::vector<cv::KeyPoint>& 
 
 void FREAK_Parallel::FREAK_feature_description_worker(const std::vector<cv::KeyPoint>& key_points, const cv::Mat& blurred_gray_picture, const size_t& starting_key_point_index, std::vector<std::vector<uint8_t>>& descriptor, const size_t& num_of_keypoints, const size_t& KEYPOINTS_PER_TASK) {
 
-    // const size_t num_of_keypoints = key_points.size();
-    // std::vector<std::vector<uint8_t>> descriptor(num_of_keypoints, std::vector<uint8_t>(DESCRIPTOR_SIZE));
-    // std::cout << "Rows: " << n_rows << "\t" << "Cols: " << n_cols << std::endl;
-
     const size_t upper_bound = std::min(num_of_keypoints, starting_key_point_index + KEYPOINTS_PER_TASK);
 
     for (size_t i = starting_key_point_index; i < upper_bound; i++) {
@@ -110,8 +106,6 @@ void FREAK_Parallel::FREAK_feature_description_worker(const std::vector<cv::KeyP
                 descriptor[i][j] = 0;
             }
 
-            // return descriptor; // debug
-            // descriptor[i][j] = 1;
         }
 
     }
