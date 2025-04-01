@@ -59,6 +59,7 @@ add_executable(compare_feature_extraction_with_serial
 #        feature_extraction_parallel/test_feature_extraction_parallel.cpp
         feature_extraction_parallel/threadpool.cpp feature_extraction_parallel/threadpool.h
         feature_extraction_parallel/corner_detection_parallel.cpp feature_extraction_parallel/corner_detection_parallel.h
+        feature_extraction_parallel/FREAK_feature_descriptor_parallel.cpp feature_extraction_parallel/FREAK_feature_descriptor_parallel.h
         compare_with_serial.cpp
         feature_extraction_parallel/join_threads.h
         feature_extraction_parallel/ts_queue.h

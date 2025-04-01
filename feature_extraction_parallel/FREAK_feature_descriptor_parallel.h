@@ -2,8 +2,8 @@
 // Created by julfy1 on 3/24/25.
 //
 #pragma once
-#ifndef FREAK_FEATURE_DESCRIPTOR_H
-#define FREAK_FEATURE_DESCRIPTOR_H
+#ifndef FREAK_FEATURE_DESCRIPTOR_PARALLEL_H
+#define FREAK_FEATURE_DESCRIPTOR_PARALLEL_H
 
 #include <opencv2/core.hpp>
 #include <vector>
@@ -24,6 +24,7 @@ struct test {
 constexpr size_t NUM_POINTS = 43;
 constexpr size_t NUM_PAIRS = (NUM_POINTS * (NUM_POINTS - 1)) / 2;
 
+constexpr size_t KEY_POINTS_PER_TASK = 10;
 
 constexpr std::array<point, NUM_POINTS> predefined_point_for_matching = {{
     {33, 0}, {17, -30}, {-17, -30}, {-33, 0}, {-17, 30}, {17, 30},
@@ -96,15 +97,12 @@ constexpr std::array<size_t, 512> PATCH_DESCRIPTION_POINTS =
 constexpr size_t DESCRIPTOR_SIZE = PATCH_DESCRIPTION_POINTS.size();
 
 
-class FREAK {
+class FREAK_Parallel {
 public:
-    // static auto prepare_the_surroundings(const cv::Mat& blurred_gray_picture, const std::vector<int>& key_point, const int& n_cols, const int& n_rows);
-    static double compute_orientation(const cv::KeyPoint &point, cv::Mat& image, const int& n_cols, const int& n_rows);
-    // static void add_transposed_vector(std::vector<std::vector<int>>& array, const std::vector<double>& add_vector, const size_t index, const size_t num_of_keypoints);
-    static std::vector<std::vector<uint8_t>> FREAK_feature_description(const std::vector<cv::KeyPoint>& key_points, cv::Mat blurred_gray_picture, const int& n_cols, const int& n_rows, const double corr_threshold = 0.5);
+    static double compute_orientation(const cv::KeyPoint &point, const cv::Mat& image);
+    static void FREAK_feature_description(const std::vector<cv::KeyPoint>& key_points, const cv::Mat blurred_gray_picture, const size_t& starting_key_point_index, std::vector<std::vector<uint8_t>>& descriptor);
+    static void FREAK_feature_description_worker(const std::vector<cv::KeyPoint>& key_points, const cv::Mat& blurred_gray_picture, const size_t& starting_key_point_index, std::vector<std::vector<uint8_t>>& descriptor, const size_t& num_of_keypoints, const size_t& KEYPOINTS_PER_TASK = KEY_POINTS_PER_TASK);
 
-    // static void FREAK_feature_description(const std::vector<std::tuple<int, int, double>>& key_points, cv::Mat blurred_gray_picture, const int& n_cols, const int& n_rows, const double corr_threshold);
-    // static auto prepare_and_test(const std::string& filename, const std::string& cur_path, const std::string& win_name, const bool draw = false);
 };
 
-#endif //FREAK_FEATURE_DESCRIPTOR_H
+#endif //FREAK_FEATURE_DESCRIPTOR_PARALLEL_H

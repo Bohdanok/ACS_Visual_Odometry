@@ -89,9 +89,9 @@ std::vector<std::vector<uint8_t>> descriptor_for_s_pop(const std::string& filena
 
     auto gradients = CornerDetection::direction_gradients(my_blurred_gray, n_rows, n_cols);
 
-    auto shitomasi_corners = CornerDetection::shitomasi_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.05);
+    auto shitomasi_response = CornerDetection::shitomasi_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.05);
 
-    auto local_mins_shitomasi = CornerDetection::non_maximum_suppression(shitomasi_corners, n_rows, n_cols, 5, 1500);
+    auto local_mins_shitomasi = CornerDetection::non_maximum_suppression(shitomasi_response, n_rows, n_cols, 5, 1500);
 
     std::cout << "Number of keypoints: " << local_mins_shitomasi.size() << std::endl;
 

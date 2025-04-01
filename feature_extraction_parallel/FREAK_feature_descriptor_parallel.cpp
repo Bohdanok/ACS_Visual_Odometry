@@ -2,10 +2,10 @@
 // Created by julfy1 on 3/24/25.
 //
 
-#include "FREAK_feature_descriptor.h"
+#include "FREAK_feature_descriptor_parallel.h"
 #include <iostream>
 
-double FREAK::compute_orientation(const cv::KeyPoint &point, cv::Mat& image, const int& n_cols, const int& n_rows) {
+double FREAK_Parallel::compute_orientation(const cv::KeyPoint &point, const cv::Mat& image) {
 
     double O_x = 0;
     double O_y = 0;
@@ -29,17 +29,17 @@ double FREAK::compute_orientation(const cv::KeyPoint &point, cv::Mat& image, con
 }
 
 
-std::vector<std::vector<uint8_t>> FREAK::FREAK_feature_description(const std::vector<cv::KeyPoint>& key_points, cv::Mat blurred_gray_picture, const int& n_cols, const int& n_rows, const double corr_threshold) {
+void FREAK_Parallel::FREAK_feature_description(const std::vector<cv::KeyPoint>& key_points, cv::Mat blurred_gray_picture, const size_t& starting_key_point_index, std::vector<std::vector<uint8_t>>& descriptor) {
 
     const size_t num_of_keypoints = key_points.size();
-    std::vector<std::vector<uint8_t>> descriptor(num_of_keypoints, std::vector<uint8_t>(DESCRIPTOR_SIZE));
-    std::cout << "Rows: " << n_rows << "\t" << "Cols: " << n_cols << std::endl;
+    // std::vector<std::vector<uint8_t>> descriptor(num_of_keypoints, std::vector<uint8_t>(DESCRIPTOR_SIZE));
+    // std::cout << "Rows: " << n_rows << "\t" << "Cols: " << n_cols << std::endl;
 
     for (size_t i = 0; i < num_of_keypoints; i++) {
 
         const auto key_point = key_points[i];
 
-        const double angle = compute_orientation(key_point , blurred_gray_picture, n_cols, n_rows);
+        const double angle = compute_orientation(key_point , blurred_gray_picture);
         const double rotation_matrix[4] = {std::cos(angle), -1 * std::sin(angle), std::sin(angle), std::cos(angle)};
 
         for (size_t j = 0; j < DESCRIPTOR_SIZE; j++) {
@@ -56,23 +56,6 @@ std::vector<std::vector<uint8_t>> FREAK::FREAK_feature_description(const std::ve
             const point pnt2 = point(static_cast<int>(key_point.pt.x +
                 pt2.pt.x * rotation_matrix[0] + pt2.pt.y * rotation_matrix[2]),
                 static_cast<int>(key_point.pt.y + (-1) * pt2.pt.x * rotation_matrix[1] + pt2.pt.y * rotation_matrix[3]));
-            // std::cout << "i: " << i << "\t" << "j: " << j << "\tPoint1: " << "(" << pnt1.x << ", " << pnt1.y << ")" << "\t" << "Point2: " << "(" << pnt2.x << ", " << pnt2.y << ")" << std::endl;
-
-            // descriptor[i][j] = 1;
-
-            // debug
-            // assert(pnt1.y > n_rows)
-            if (pnt1.y > n_rows || pnt1.x > n_cols) {
-                std::cout << "Key point with out of bounds: " << "(" << key_point.pt.x << ", " << key_point.pt.y << ")" << std::endl;
-                std::cout << "Before the rotation on " << angle << " radiants" << "\ti: " << i << "\t" << "j: " << j << "\tPoint1: " << "(" << pt1.pt.x << ", " << pt1.pt.y << ")" << std::endl;
-                std::cout << "After the rotation on " << angle << " radiants" << "\ti: " << i << "\t" << "j: " << j << "\tPoint1: " << "(" << pnt1.x << ", " << pnt1.y << ")" << std::endl;
-            }
-            if (pnt2.y > n_rows || pnt2.x > n_cols) {
-                std::cout << "Key point with out of bounds: " << "(" << key_point.pt.x << ", " << key_point.pt.y << ")" << std::endl;
-                std::cout << "Before the rotation on " << angle << " radiants" << "\ti: " << i << "\t" << "j: " << j << "\tPoint2: " << "(" << pt2.pt.x << ", " << pt2.pt.y << ")" << std::endl;
-                std::cout << "After the rotation on " << angle << " radiants" << "\ti: " << i << "\t" << "j: " << j << "\tPoint2: " << "(" << pnt2.x << ", " << pnt2.y << ")" << std::endl;
-                // std::cout << "i: " << i << "\t" << "j: " << j << "\tPoint1: " << "(" << pnt1.x << ", " << pnt1.y << ")" << "\t" << "Point2: " << "(" << pnt2.x << ", " << pnt2.y << ")" << std::endl;
-            }
 
             if (blurred_gray_picture.at<uchar>(pnt1.y, pnt1.x) > blurred_gray_picture.at<uchar>(pnt2.y, pnt2.x)) {
                 descriptor[i][j] = 1;
@@ -81,11 +64,56 @@ std::vector<std::vector<uint8_t>> FREAK::FREAK_feature_description(const std::ve
                 descriptor[i][j] = 0;
             }
             // return descriptor; // debug
-            // std::cout << "i: " << i << ", j: " << j << ", descriptor: " << int(descriptor[i][j]) << std::endl;
+
         }
 
     }
 
-    return descriptor;
+}
+
+
+
+void FREAK_Parallel::FREAK_feature_description_worker(const std::vector<cv::KeyPoint>& key_points, const cv::Mat& blurred_gray_picture, const size_t& starting_key_point_index, std::vector<std::vector<uint8_t>>& descriptor, const size_t& num_of_keypoints, const size_t& KEYPOINTS_PER_TASK) {
+
+    // const size_t num_of_keypoints = key_points.size();
+    // std::vector<std::vector<uint8_t>> descriptor(num_of_keypoints, std::vector<uint8_t>(DESCRIPTOR_SIZE));
+    // std::cout << "Rows: " << n_rows << "\t" << "Cols: " << n_cols << std::endl;
+
+    const size_t upper_bound = std::min(num_of_keypoints, starting_key_point_index + KEYPOINTS_PER_TASK);
+
+    for (size_t i = starting_key_point_index; i < upper_bound; i++) {
+
+        const auto key_point = key_points[i];
+
+        const double angle = compute_orientation(key_point , blurred_gray_picture);
+        const double rotation_matrix[4] = {std::cos(angle), -1 * std::sin(angle), std::sin(angle), std::cos(angle)};
+
+        for (size_t j = 0; j < DESCRIPTOR_SIZE; j++) {
+            // std::cout << "Key point: " << "(" << key_point.x << ", " << key_point.y << ")" << std::endl;
+            const auto cur_patch = test_cases[j];
+
+            const auto pt1 = cur_patch.point1;
+            const auto pt2 = cur_patch.point2;
+
+            const point pnt1 = point( static_cast<int>(key_point.pt.x +
+                pt1.pt.x * rotation_matrix[0] + pt1.pt.y * rotation_matrix[2]),
+                static_cast<int>(key_point.pt.y + (-1) * pt1.pt.x * rotation_matrix[1] + pt1.pt.y * rotation_matrix[3]));
+
+            const point pnt2 = point(static_cast<int>(key_point.pt.x +
+                pt2.pt.x * rotation_matrix[0] + pt2.pt.y * rotation_matrix[2]),
+                static_cast<int>(key_point.pt.y + (-1) * pt2.pt.x * rotation_matrix[1] + pt2.pt.y * rotation_matrix[3]));
+
+            if (blurred_gray_picture.at<uchar>(pnt1.y, pnt1.x) > blurred_gray_picture.at<uchar>(pnt2.y, pnt2.x)) {
+                descriptor[i][j] = 1;
+            }
+            else {
+                descriptor[i][j] = 0;
+            }
+
+            // return descriptor; // debug
+            // descriptor[i][j] = 1;
+        }
+
+    }
 
 }
