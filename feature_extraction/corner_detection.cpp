@@ -296,51 +296,122 @@ std::vector<std::vector<double>> CornerDetection::shitomasi_corner_detection(cv:
 }
 
 
-std::vector<cv::KeyPoint> CornerDetection::non_maximum_suppression(std::vector<std::vector<double>> R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
-    std::priority_queue<std::tuple<double, int, int>> max_heap; // Store (R_value, i, j)
+// std::vector<cv::KeyPoint> CornerDetection::non_maximum_suppression(std::vector<std::vector<double>> R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
+//     std::priority_queue<std::tuple<double, int, int>> max_heap; // Store (R_value, i, j)
+//     std::vector<cv::KeyPoint> output_corners;
+//     output_corners.reserve(N);
+//     int count = 0;
+
+//     for (int i = k / 2; i < n_rows - k / 2; i++) {
+//         for (int j = k / 2; j < n_cols - k / 2; j++) {
+
+//             // not to include out of bounce for retinal sampling
+
+//             if (!((j >= 37) && (j <= n_cols - 37) && (i >= 35) && (i <= n_rows - 35))) {
+//                 continue;
+//             }
+
+//             double center_val = R_values[i][j];
+//             bool is_local_max = true;
+
+//             for (int n = i - k / 2; n <= i + k / 2; n++) {
+//                 for (int m = j - k / 2; m <= j + k / 2; m++) {
+//                     if (!(n == i && m == j)) {
+//                         if (R_values[n][m] >= center_val) {
+//                             is_local_max = false;
+//                             break;
+//                         }
+//                     }
+//                 }
+//                 if (!is_local_max) break;
+//             }
+
+//             if (is_local_max) {
+//                 max_heap.push({center_val, i, j});
+//             }
+//         }
+//     }
+
+//     for (int i = 0; i < N && !max_heap.empty(); i++) {
+//         output_corners.push_back({cv::Point2f(static_cast<float>(std::get<2>(max_heap.top())), static_cast<float>(std::get<1>(max_heap.top()))), 1.0f});
+//         max_heap.pop();
+//         count++;
+//     }
+//     // std::cout << "COunt: " << count << std::endl; // debug
+//     return output_corners;
+// }
+
+struct Candidate {
+    double score;
+    int i;
+    int j;
+
+    bool operator<(const Candidate& other) const {
+        return score > other.score;
+    }
+};
+
+std::vector<cv::KeyPoint> CornerDetection::non_maximum_suppression(
+    std::vector<std::vector<double>> R_values,
+    const int& n_rows,
+    const int& n_cols,
+    const int& k,
+    const int& N
+) {
     std::vector<cv::KeyPoint> output_corners;
     output_corners.reserve(N);
-    int count = 0;
 
-    for (int i = k / 2; i < n_rows - k / 2; i++) {
-        for (int j = k / 2; j < n_cols - k / 2; j++) {
+    std::vector<bool> active(n_rows * n_cols, true);
+    #define IDX(i, j) ((i) * n_cols + (j))
 
-            // not to include out of bounce for retinal sampling
+    const double threshold = 1e-5;
+    const int safe_margin_i = std::max(k / 2, 35);
+    const int safe_margin_j = std::max(k / 2, 37);
 
-            if (!((j >= 37) && (j <= n_cols - 37) && (i >= 35) && (i <= n_rows - 35))) {
-                continue;
-            }
+    std::vector<Candidate> candidates;
 
-            double center_val = R_values[i][j];
-            bool is_local_max = true;
-
-            for (int n = i - k / 2; n <= i + k / 2; n++) {
-                for (int m = j - k / 2; m <= j + k / 2; m++) {
-                    if (!(n == i && m == j)) {
-                        if (R_values[n][m] >= center_val) {
-                            is_local_max = false;
-                            break;
-                        }
-                    }
-                }
-                if (!is_local_max) break;
-            }
-
-            if (is_local_max) {
-                max_heap.push({center_val, i, j});
+    for (int i = safe_margin_i; i < n_rows - safe_margin_i; ++i) {
+        for (int j = safe_margin_j; j < n_cols - safe_margin_j; ++j) {
+            double score = R_values[i][j];
+            if (score > threshold) {
+                candidates.push_back({score, i, j});
             }
         }
     }
 
-    for (int i = 0; i < N && !max_heap.empty(); i++) {
-        output_corners.push_back({cv::Point2f(static_cast<float>(std::get<2>(max_heap.top())), static_cast<float>(std::get<1>(max_heap.top()))), 1.0f});
-        max_heap.pop();
-        count++;
-    }
-    // std::cout << "COunt: " << count << std::endl; // debug
+    std::sort(candidates.begin(), candidates.end());
+
+    for (const auto& candidate : candidates) {
+    	int i = candidate.i;
+    	int j = candidate.j;
+    	if (!active[IDX(i, j)]) continue;
+		bool is_local_max = true;
+        double center_score = R_values[i][j];
+		for (int di = -k / 2; di <= k / 2 && is_local_max; ++di) {
+    		for (int dj = -k / 2; dj <= k / 2; ++dj) {
+        		int ni = i + di;
+        		int nj = j + dj;
+        		if (di == 0 && dj == 0) continue;
+				if (R_values[ni][nj] >= center_score) {
+            		is_local_max = false;
+            		break;
+        		}
+    		}
+		}
+		if (!is_local_max) continue;
+
+    	output_corners.emplace_back(cv::Point2f(j, i), 1.0f);
+    	if (output_corners.size() >= static_cast<size_t>(N)) break;
+
+    	for (int di = -k / 2; di <= k / 2; ++di) {
+        	for (int dj = -k / 2; dj <= k / 2; ++dj) {
+            	active[IDX(i + di, j + dj)] = false;
+        	}
+    	}
+	}
+
     return output_corners;
 }
-
 
 auto test_opencv_sobel(const std::string& filename, const std::string& cur_path) {
 
