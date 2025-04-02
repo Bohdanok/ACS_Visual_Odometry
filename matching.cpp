@@ -105,6 +105,71 @@ std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsParallel(
     return allMatches;
 }
 
+std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
+    const std::vector<std::vector<uint8_t>>& desc1,
+    const std::vector<std::vector<uint8_t>>& desc2,
+    thread_pool& pool,
+    int numThreads,
+    float ratioThreshold = 0.75f)
+{
+    std::vector<std::pair<int, int>> allMatches;
+    if (desc1.empty() || desc2.empty()) return allMatches;
+
+    const int descriptorLength = desc1[0].size();
+    const size_t total = desc1.size();
+    const int blocks = numThreads;  // simpler for now
+    const size_t chunkSize = (total + blocks - 1) / blocks;
+
+    std::vector<std::future<std::vector<std::pair<int, int>>>> futures;
+
+    for (int t = 0; t < blocks; ++t) {
+        size_t startIdx = t * chunkSize;
+        size_t endIdx = std::min(startIdx + chunkSize, total);
+        if (startIdx >= total) break;
+
+        futures.emplace_back(pool.submit([&, startIdx, endIdx]() {
+            std::vector<std::pair<int, int>> localMatches;
+            localMatches.reserve(chunkSize);
+
+            for (size_t i = startIdx; i < endIdx; ++i) {
+                int bestIdx = -1, secondBestIdx = -1;
+                int bestDist = std::numeric_limits<int>::max();
+                int secondBestDist = std::numeric_limits<int>::max();
+
+                for (size_t j = 0; j < desc2.size(); ++j) {
+                    int dist = hammingDistance(desc1[i].data(), desc2[j].data(), descriptorLength);
+                    if (dist < bestDist) {
+                        secondBestDist = bestDist;
+                        secondBestIdx = bestIdx;
+                        bestDist = dist;
+                        bestIdx = j;
+                    } else if (dist < secondBestDist) {
+                        secondBestDist = dist;
+                        secondBestIdx = j;
+                    }
+                }
+
+                if (bestIdx != -1 && secondBestIdx != -1 &&
+                    bestDist < ratioThreshold * secondBestDist) {
+                    localMatches.emplace_back(i, bestIdx);
+                }
+            }
+
+            return localMatches;
+        }));
+    }
+
+    for (auto& f : futures) {
+        std::vector<std::pair<int, int>> result = std::move(f.get());
+        allMatches.insert(allMatches.end(),
+                          std::make_move_iterator(result.begin()),
+                          std::make_move_iterator(result.end()));
+    }
+
+    return allMatches;
+}
+
+
 struct PairHash {
     std::size_t operator()(const std::pair<int, int>& p) const {
         return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 1);
@@ -229,7 +294,13 @@ int main(int argc, char** argv) {
 
     std::vector<std::pair<int, int>> customMatches;
     auto start = get_current_time_fenced();
-    customMatches = matchCustomBinaryDescriptorsParallel(std::get<0>(descs1), std::get<0>(descs2));
+    customMatches = matchCustomBinaryDescriptorsThreadPool(
+    	std::get<0>(descs1),
+    	std::get<0>(descs2),
+    	pool1,
+    	NUMBER_OF_THREADS
+	);
+
     auto end = get_current_time_fenced();
 
     // std::cout <<
