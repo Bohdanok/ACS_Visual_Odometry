@@ -113,31 +113,73 @@ public:
     }
 };
 
+double computeSampsonError(const Eigen::Matrix3d& F,
+                           const Eigen::Vector3d& x,
+                           const Eigen::Vector3d& x_prime)
+{
+    Eigen::Vector3d Fx = F * x;
+    Eigen::Vector3d Ftx = F.transpose() * x_prime;
+    double numerator = std::pow(x_prime.transpose() * F * x, 2);
+    double denominator = Fx(0) * Fx(0) + Fx(1) * Fx(1) + Ftx(0) * Ftx(0) + Ftx(1) * Ftx(1);
+
+    if (denominator < 1e-12) return std::numeric_limits<double>::max(); // Avoid division by zero
+    return numerator / denominator;
+}
+
 class Ransac {
 public:
-    static void run(FundamentalMatrix& model, std::vector<std::pair<Point, Point>>& data, double probability, double threshold) {
+    static void run(FundamentalMatrix& model,
+                    const std::vector<std::pair<Point, Point>>& data,
+                    double probability,
+                    double sampsonThreshold) {
         int N = data.size();
-        double outlier_ratio = 0.5;
         int sampleSize = 8;
+        double outlierRatio = 0.5;
+        int maxIterations = std::log(1.0 - probability) / std::log(1.0 - std::pow(1.0 - outlierRatio, sampleSize));
+
         int bestInliers = 0;
-        std::srand(std::time(0));
-        int maxIterations = std::log(1 - probability) / std::log(1 - std::pow(outlier_ratio, sampleSize));
+        std::vector<std::pair<Point, Point>> bestInlierSet;
+        Eigen::Matrix3d bestF;
 
-        std::vector<std::pair<Point, Point>> sample;
-        std::sample(data.begin(), data.end(), std::back_inserter(sample), sampleSize, std::mt19937{std::random_device{}()});
-        model.fit(sample);
+        std::mt19937 rng(std::random_device{}());
 
-        for (int i = 0; i < maxIterations; ++i) {
-            int inliers = model.countInliers(data, threshold);
+        for (int iter = 0; iter < maxIterations; ++iter) {
+            std::vector<std::pair<Point, Point>> sample;
+            std::sample(data.begin(), data.end(), std::back_inserter(sample),
+                        sampleSize, rng);
 
-            if (inliers > bestInliers) {
-                bestInliers = inliers;
-                outlier_ratio = static_cast<double>(inliers) / N;
-                maxIterations = std::log(1 - probability) / std::log(1 - std::pow(outlier_ratio, sampleSize));
+            FundamentalMatrix tempModel;
+            tempModel.fit(sample);
+            Eigen::Matrix3d F = tempModel.getMatrix();
+
+            std::vector<std::pair<Point, Point>> currentInliers;
+            for (const auto& pair : data) {
+                Eigen::Vector3d x(pair.first.x, pair.first.y, 1.0);
+                Eigen::Vector3d x_prime(pair.second.x, pair.second.y, 1.0);
+
+                double error = computeSampsonError(F, x, x_prime);
+                if (error < sampsonThreshold) {
+                    currentInliers.push_back(pair);
+                }
+            }
+
+            if (currentInliers.size() > bestInliers) {
+                bestInliers = currentInliers.size();
+                bestInlierSet = currentInliers;
+                bestF = F;
+
+                outlierRatio = 1.0 - static_cast<double>(bestInliers) / N;
+                double denom = std::log(1.0 - std::pow(1.0 - outlierRatio, sampleSize));
+                if (denom != 0.0) {
+                    maxIterations = std::log(1.0 - probability) / denom;
+                    maxIterations = std::clamp(maxIterations, 100, 2000);
+                }
             }
         }
 
-        std::cout << "Best Model with " << bestInliers << " inliers:\n";
+        std::cout << "Best Sampson inliers: " << bestInliers << " / " << N << std::endl;
+
+        model.fit(bestInlierSet);
         model.print();
     }
 };
@@ -206,10 +248,9 @@ int checkRank(const Eigen::MatrixXd& matrix) {
     return rank;
 }
 
-
 int main() {
-    cv::Mat img1 = cv::imread("./first.png", cv::IMREAD_GRAYSCALE);
-    cv::Mat img2 = cv::imread("./second.png", cv::IMREAD_GRAYSCALE);
+    cv::Mat img1 = cv::imread("/Users/ostappavlyshyn/CLionProjects/ransac/first.png", cv::IMREAD_GRAYSCALE);
+    cv::Mat img2 = cv::imread("/Users/ostappavlyshyn/CLionProjects/ransac/second.png", cv::IMREAD_GRAYSCALE);
 
     cv::Ptr<cv::BRISK> brisk = cv::BRISK::create();
 
@@ -232,28 +273,26 @@ int main() {
     FundamentalMatrix fundamentalModel;
     Ransac::run(fundamentalModel, matchedPoints, 0.99, 1.0);
 
-    int number_of_correct_constraints = 0;
-    int number_of_incorrect_constraints = 0;
+    int sampsonInliers = 0;
+    int sampsonOutliers = 0;
+    double sampsonThreshold = 1.0;
+
+    Eigen::Matrix3d F = fundamentalModel.getMatrix();
+
     for (const auto& pair : matchedPoints) {
-        Point x = pair.first;
-        Point x_prime = pair.second;
+        Eigen::Vector3d x(pair.first.x, pair.first.y, 1.0);
+        Eigen::Vector3d x_prime(pair.second.x, pair.second.y, 1.0);
 
-        Eigen::Vector3d x_h(x.x, x.y, 1.0);
-        Eigen::Vector3d x_prime_h(x_prime.x, x_prime.y, 1.0);
-
-        Eigen::Matrix3d F = fundamentalModel.getMatrix();
-
-        double value = x_prime_h.transpose() * F * x_h;
-
-        if (std::abs(value) > 1) {
-            number_of_incorrect_constraints++;
+        double error = computeSampsonError(F, x, x_prime);
+        if (error < sampsonThreshold) {
+            ++sampsonInliers;
         } else {
-            number_of_correct_constraints++;
+            ++sampsonOutliers;
         }
     }
 
-    std::cout << "Epipolar constraint value (x'^T F x = 0) correct: " << number_of_correct_constraints << "\n";
-    std::cout << "Epipolar constraint value (x'^T F x = 0) incorrect: " << number_of_incorrect_constraints << "\n";
+    std::cout << "Sampson error inliers: " << sampsonInliers << std::endl;
+    std::cout << "Sampson error outliers: " << sampsonOutliers << std::endl;
 
     int rank = checkRank(fundamentalModel.getMatrix());
     std::cout << "Rank of F: " << rank << std::endl;
