@@ -15,7 +15,7 @@
 // #define VISUALIZATION
 
 void print_descriptor(const std::vector<std::vector<uint8_t>>& descriptor);
-void response_worker(const cv::Mat& blurred_gray, const interval& interval, cv::Mat& Jx, cv::Mat& Jy, cv::Mat& Jxy, std::vector<std::vector<double>>& R_array);
+inline void response_worker(const cv::Mat& blurred_gray, const interval& interval, cv::Mat& Jx, cv::Mat& Jy, cv::Mat& Jxy, std::vector<std::vector<double>>& R_array);
 std::vector<std::vector<uint8_t>> feature_extraction_manager(cv::Mat& image, thread_pool& pool);
 std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_extraction_manager_with_points(cv::Mat& image, thread_pool& pool);
 

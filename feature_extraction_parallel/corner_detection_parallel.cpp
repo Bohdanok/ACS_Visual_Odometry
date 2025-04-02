@@ -61,6 +61,7 @@ void CornerDetectionParallel::direction_gradients_worker(const cv::Mat& picture,
 void CornerDetectionParallel::shitomasi_corner_detection_worker(const cv::Mat& Jx, const cv::Mat& Jy, const cv::Mat& Jxy, const interval& interval, const double& k, std::vector<std::vector<double>>& R_array){
 
     double jx2, jy2;
+    // double max_R = -99999999.0;
 
     for (int i = interval.rows.start + 2; i < interval.rows.end - 2; i++) { // if the length of the interval is 1???!?
 
@@ -95,11 +96,12 @@ void CornerDetectionParallel::shitomasi_corner_detection_worker(const cv::Mat& J
             const double R = (trace / 2) - (0.5 * std::sqrt(trace * trace - 4 * det));
 
             R_array[i][j] = R > RESPONSE_THRESHOLD ? R : 0;
+            // R_array[i][j] = R;
+            // max_R = std::max(R, max_R);
 
         }
 
     }
-
 }
 
 

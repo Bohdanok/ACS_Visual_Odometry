@@ -9,6 +9,49 @@
 
 // #define VISUALIZATION
 
+void print_interval(const interval& interval) {
+    std::cout << "Start: (" << interval.cols.start << ", " << interval.rows.start << ")\tEnd: (" << interval.cols.end << ", " << interval.rows.end << ")" << std::endl;
+}
+
+void draw_score_distribution(const std::vector<std::vector<double>>& R_values, const std::string& win_name) {
+
+    int rows = R_values.size();
+    int cols = R_values[0].size();
+
+    cv::Mat mat(rows, cols, CV_64F); // Create matrix to store values
+
+    // Copy values
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            mat.at<double>(i, j) = R_values[i][j];
+        }
+    }
+
+    // Normalize values to range [0, 1]
+    double minVal, maxVal;
+    cv::minMaxLoc(mat, &minVal, &maxVal);
+    cv::Mat normMat = (mat - minVal) / (maxVal - minVal); // Normalize between 0-1
+
+    // Create color image
+    cv::Mat colorImage(rows, cols, CV_8UC3);
+
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            double val = normMat.at<double>(i, j); // Normalized value [0, 1]
+
+            // Map to RGB colors (Green → Blue → Red)
+            uchar red   = static_cast<uchar>(255 * std::max(0.0, (val - 0.5) * 2));  // Increase red for higher values
+            uchar blue  = static_cast<uchar>(255 * std::max(0.0, (0.5 - std::abs(val - 0.5)) * 2));  // Max in the middle
+            uchar green = static_cast<uchar>(255 * std::max(0.0, (0.5 - val) * 2));  // Decrease green as value increases
+
+            colorImage.at<cv::Vec3b>(i, j) = cv::Vec3b(blue, green, red);
+        }
+    }
+    cv::imshow(win_name, colorImage);
+    // cv::imwrite("../test_images/output_images/" + win_name + ".png", colorImage);
+
+}
+
 void response_worker(const cv::Mat& blurred_gray, const interval& interval, cv::Mat& Jx, cv::Mat& Jy, cv::Mat& Jxy, std::vector<std::vector<double>>& R_array) {
 
     CornerDetectionParallel::direction_gradients_worker(blurred_gray, interval, Jx, Jy, Jxy);
@@ -43,11 +86,17 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(cv::Mat& image, thr
 
     for (int i = 0; i < n_rows; i += BLOCK_SIZE) {
         for (int j = 0; j < n_cols; j += BLOCK_SIZE) {
-            const interval interval = {{j, std::min(n_cols, j + BLOCK_SIZE - 1)}, {i, std::min(n_rows, i + BLOCK_SIZE - 1)}};
+            const interval interval = {{j, std::min(n_cols, j + BLOCK_SIZE + 2)}, {i, std::min(n_rows, i + BLOCK_SIZE + 2)}};
             // intervals.emplace_back(interval);
-
-            futures_responses.emplace_back(pool.submit([&image, &Jx, &Jy, &Jxy, &R_array, interval]() {
-                response_worker(image, interval, Jx, Jy, Jxy, R_array);
+#ifdef VISUALIZATION
+            cv::rectangle(image,
+                      cv::Point(interval.cols.start, interval.rows.start),
+                      cv::Point(interval.cols.end, interval.rows.end),
+                      cv::Scalar(0, 255, 0), 1);
+#endif
+            print_interval(interval);
+            futures_responses.emplace_back(pool.submit([&my_blurred_gray, &Jx, &Jy, &Jxy, &R_array, interval]() {
+                response_worker(my_blurred_gray, interval, Jx, Jy, Jxy, R_array);
             }));
         }
     }
@@ -58,6 +107,27 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(cv::Mat& image, thr
 
     const auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 15000);
 
+    #ifdef VISUALIZATION
+        for (auto coords : local_mins_shitomasi) {
+
+            // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
+
+            cv::circle(image, cv::Point(coords.pt.x, coords.pt.y), 1, cv::Scalar(0, 0, 255), 3);
+        }
+
+        cv::imshow("BOhdan with corners harris", image);
+
+        // draw_score_distribution(R_array, "Response");
+        //
+        // cv::imshow("Jx", Jx);
+        // cv::imshow("Jy", Jy);
+        // cv::imshow("Jxy", Jxy);
+
+        cv::waitKey(0);
+
+        cv::destroyAllWindows();
+    #endif
+
     size_t cur_index = 0;
     const size_t num_of_keypoints = local_mins_shitomasi.size();
 
@@ -66,19 +136,25 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(cv::Mat& image, thr
 
     while (cur_index + KEY_POINTS_PER_TASK < num_of_keypoints) {
 
-        futures_descriptor.emplace_back(pool.submit([&local_mins_shitomasi, &image, cur_index, &descriptor, &num_of_keypoints]() {
-            FREAK_Parallel::FREAK_feature_description_worker(local_mins_shitomasi, image, cur_index, descriptor, num_of_keypoints);
+        futures_descriptor.emplace_back(pool.submit([&local_mins_shitomasi, &my_blurred_gray, cur_index, &descriptor, &num_of_keypoints]() {
+            FREAK_Parallel::FREAK_feature_description_worker(local_mins_shitomasi, my_blurred_gray, cur_index, descriptor, num_of_keypoints);
         }));
         cur_index += KEY_POINTS_PER_TASK;
     }
 
-    futures_descriptor.emplace_back(pool.submit([&local_mins_shitomasi, &image, cur_index, &descriptor, &num_of_keypoints]() {
-            FREAK_Parallel::FREAK_feature_description_worker(local_mins_shitomasi, image, cur_index, descriptor, num_of_keypoints, num_of_keypoints - cur_index);
+    futures_descriptor.emplace_back(pool.submit([&local_mins_shitomasi, &my_blurred_gray, cur_index, &descriptor, &num_of_keypoints]() {
+            FREAK_Parallel::FREAK_feature_description_worker(local_mins_shitomasi, my_blurred_gray, cur_index, descriptor, num_of_keypoints, num_of_keypoints - cur_index);
         }));
 
     for (auto &future : futures_descriptor) {
         future.get();
     }
+
+    // cv::imshow("Intbervals", image);
+    //
+    // cv::waitKey(0);
+    //
+    // cv::destroyAllWindows();
 
     return descriptor;
 
@@ -110,11 +186,18 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
 
     for (int i = 0; i < n_rows; i += BLOCK_SIZE) {
         for (int j = 0; j < n_cols; j += BLOCK_SIZE) {
-            const interval interval = {{j, std::min(n_cols, j + BLOCK_SIZE - 1)}, {i, std::min(n_rows, i + BLOCK_SIZE - 1)}};
+            const interval interval = {{j, std::min(n_cols, j + BLOCK_SIZE + 2)}, {i, std::min(n_rows, i + BLOCK_SIZE + 2)}};
             // intervals.emplace_back(interval);
+#ifdef VISUALIZATION
+            cv::rectangle(image,
+                      cv::Point(interval.cols.start, interval.rows.start),
+                      cv::Point(interval.cols.end, interval.rows.end),
+                      cv::Scalar(0, 255, 0), 1);
+            print_interval(interval);
 
-            futures_responses.emplace_back(pool.submit([&image, &Jx, &Jy, &Jxy, &R_array, interval]() {
-                response_worker(image, interval, Jx, Jy, Jxy, R_array);
+#endif
+            futures_responses.emplace_back(pool.submit([&my_blurred_gray, &Jx, &Jy, &Jxy, &R_array, interval]() {
+                response_worker(my_blurred_gray, interval, Jx, Jy, Jxy, R_array);
             }));
         }
     }
@@ -125,6 +208,27 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
 
     const auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 15000);
 
+    #ifdef VISUALIZATION
+        for (auto coords : local_mins_shitomasi) {
+
+            // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
+
+            cv::circle(image, cv::Point(coords.pt.x, coords.pt.y), 1, cv::Scalar(0, 0, 255), 3);
+        }
+
+        cv::imshow("BOhdan with corners harris", image);
+
+        // draw_score_distribution(R_array, "Response");
+        //
+        // cv::imshow("Jx", Jx);
+        // cv::imshow("Jy", Jy);
+        // cv::imshow("Jxy", Jxy);
+
+        cv::waitKey(0);
+
+        cv::destroyAllWindows();
+    #endif
+
     size_t cur_index = 0;
     const size_t num_of_keypoints = local_mins_shitomasi.size();
 
@@ -133,14 +237,14 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
 
     while (cur_index + KEY_POINTS_PER_TASK < num_of_keypoints) {
 
-        futures_descriptor.emplace_back(pool.submit([&local_mins_shitomasi, &image, cur_index, &descriptor, &num_of_keypoints]() {
-            FREAK_Parallel::FREAK_feature_description_worker(local_mins_shitomasi, image, cur_index, descriptor, num_of_keypoints);
+        futures_descriptor.emplace_back(pool.submit([&local_mins_shitomasi, &my_blurred_gray, cur_index, &descriptor, &num_of_keypoints]() {
+            FREAK_Parallel::FREAK_feature_description_worker(local_mins_shitomasi, my_blurred_gray, cur_index, descriptor, num_of_keypoints);
         }));
         cur_index += KEY_POINTS_PER_TASK;
     }
 
-    futures_descriptor.emplace_back(pool.submit([&local_mins_shitomasi, &image, cur_index, &descriptor, &num_of_keypoints]() {
-            FREAK_Parallel::FREAK_feature_description_worker(local_mins_shitomasi, image, cur_index, descriptor, num_of_keypoints, num_of_keypoints - cur_index);
+    futures_descriptor.emplace_back(pool.submit([&local_mins_shitomasi, &my_blurred_gray, cur_index, &descriptor, &num_of_keypoints]() {
+            FREAK_Parallel::FREAK_feature_description_worker(local_mins_shitomasi, my_blurred_gray, cur_index, descriptor, num_of_keypoints, num_of_keypoints - cur_index);
         }));
 
     for (auto &future : futures_descriptor) {

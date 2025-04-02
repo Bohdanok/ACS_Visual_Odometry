@@ -178,21 +178,31 @@ int main(int argc, char** argv) {
 
     // std::vector<std::vector<uint8_t>> descs1 = descriptor_for_s_pop(argv[1]);
     // std::vector<std::vector<uint8_t>> descs2 = descriptor_for_s_pop(argv[2]);
+    auto start_feature_extraction = get_current_time_fenced();
+
 #ifdef PARALLEL_IMPLEMENTATION
     cv::Mat image1 = cv::imread(argv[1]);
     cv::Mat image2 = cv::imread(argv[2]);
 
     thread_pool pool1(NUMBER_OF_THREADS);
-    thread_pool pool2(NUMBER_OF_THREADS);
+    // thread_pool pool2(NUMBER_OF_THREADS);
 
     auto descs1 = feature_extraction_manager_with_points(image1, pool1);
-    auto descs2 = feature_extraction_manager_with_points(image1, pool2);
+    auto descs2 = feature_extraction_manager_with_points(image2, pool1);
 
 #else
     auto descs1 = descriptor_with_points(argv[1]);
     auto descs2 = descriptor_with_points(argv[2]);
 #endif
+    auto end_feature_extraction = get_current_time_fenced();
 
+    std::cout << "Number of keypoints: " << std::get<1>(descs1).size() << std::endl;
+    std::cout << "Number of keypoints: " << std::get<1>(descs2).size() << std::endl;
+
+
+    std::cout << "Time for feature extraction: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end_feature_extraction - start_feature_extraction).count()
+              << " ms" << std::endl;
 
 
     std::vector<std::pair<int, int>> customMatches;
@@ -202,7 +212,7 @@ int main(int argc, char** argv) {
 
     // std::cout <<
 
-    std::cout << "Time: "
+    std::cout << "Time for matching: "
               << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
               << " ms" << std::endl;
 
