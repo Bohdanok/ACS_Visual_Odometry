@@ -33,7 +33,7 @@ add_executable(test_feature_extraction_with_matching feature_extraction/test_fea
 target_include_directories(test_feature_extraction_with_matching PRIVATE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(test_feature_extraction_with_matching PRIVATE ${OpenCV_LIBS})
 
-add_executable(test feature_extraction/test_feature_extraction.cpp feature_extraction/test_feature_extraction.h
+add_executable(test_serial feature_extraction/test_feature_extraction.cpp feature_extraction/test_feature_extraction.h
         feature_extraction/corner_detection.cpp feature_extraction/corner_detection.h
         feature_extraction/FREAK_feature_descriptor.cpp
         feature_extraction/FREAK_feature_descriptor.h
@@ -42,8 +42,8 @@ add_executable(test feature_extraction/test_feature_extraction.cpp feature_extra
 #set(CMAKE_BUILD_TYPE Debug)  # Ensures debugging symbols are included
 #set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")  # Adds debugging flags (no optimization)
 
-target_include_directories(test PRIVATE ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(test PRIVATE ${OpenCV_LIBS})
+target_include_directories(test_serial PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(test_serial PRIVATE ${OpenCV_LIBS})
 
 #add_executable(parallel_test_feature_extraction_with_matching feature_extraction_parallel/test_feature_extraction.cpp feature_extraction_parallel/test_feature_extraction.h
 #        feature_extraction_parallel/corner_detection_parallel.cpp feature_extraction_parallel/corner_detection.h
