@@ -105,7 +105,7 @@ void CornerDetectionParallel::shitomasi_corner_detection_worker(const cv::Mat& J
 }
 
 
-// std::vector<cv::KeyPoint> CornerDetectionParallel::non_maximum_suppression_worker(const std::vector<std::vector<double>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
+// std::vector<cv::KeyPoint> CornerDetectionParallel::non_maximum_suppression(const std::vector<std::vector<double>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
 //     std::vector<cv::KeyPoint> output_corners;
 //     output_corners.reserve(N);
 //
@@ -160,7 +160,7 @@ void CornerDetectionParallel::shitomasi_corner_detection_worker(const cv::Mat& J
 //
 //     return output_corners;
 // }
-
+//
 
 
 std::vector<cv::KeyPoint> CornerDetectionParallel::non_maximum_suppression(const std::vector<std::vector<double>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {

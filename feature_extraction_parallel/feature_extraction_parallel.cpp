@@ -105,7 +105,7 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(cv::Mat& image, thr
         future.get();
     }
 
-    const auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 15000);
+    const auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 1500);
 
     #ifdef VISUALIZATION
         for (auto coords : local_mins_shitomasi) {
@@ -206,7 +206,7 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
         future.get();
     }
 
-    const auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 15000);
+    const auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 1500);
 
     #ifdef VISUALIZATION
         for (auto coords : local_mins_shitomasi) {
