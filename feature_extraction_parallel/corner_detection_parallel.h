@@ -11,8 +11,8 @@
 #include <vector>
 
 
-constexpr size_t NUMBER_OF_THREADS = 8;
-constexpr int BLOCK_SIZE = 100;
+inline size_t NUMBER_OF_THREADS = 8;
+inline int BLOCK_SIZE = 100;
 constexpr double RESPONSE_THRESHOLD = 25000;
 
 struct bound2d {

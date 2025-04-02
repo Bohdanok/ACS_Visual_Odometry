@@ -175,6 +175,28 @@ int main(int argc, char** argv) {
         std::cerr << "Error reading images." << std::endl;
         return -1;
     }
+#ifdef PARALLEL_IMPLEMENTATION
+    if (!is_number(argv[3]))
+    {
+        std::cerr << "The number of threads has to be a positive number!" << std::endl;
+        return 69;
+    }
+
+    if (!is_number(argv[4]))
+    {
+        std::cerr << "The block size has to be a positive number!" << std::endl;
+        return -69;
+    }
+
+    NUMBER_OF_THREADS = std::stoi(argv[3]);
+    BLOCK_SIZE = std::stoi(argv[4]);
+
+    // std::cout << "Number of threads: " << NUMBER_OF_THREADS << std::endl;
+    // std::cout << "Block size: " << BLOCK_SIZE << std::endl;
+
+#endif
+
+
 
     // std::vector<std::vector<uint8_t>> descs1 = descriptor_for_s_pop(argv[1]);
     // std::vector<std::vector<uint8_t>> descs2 = descriptor_for_s_pop(argv[2]);
