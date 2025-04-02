@@ -23,17 +23,27 @@ struct interval {
     bound2d cols, rows;
 };
 
+struct Candidate {
+    double score;
+    int i;
+    int j;
+
+    bool operator<(const Candidate& other) const {
+        return score > other.score;
+    }
+};
 
 using work_result = std::variant<bool, std::vector<cv::KeyPoint>, std::vector<std::vector<uint8_t>>>;
 
 class CornerDetectionParallel {
 public:
     static cv::Mat custom_bgr2gray(cv::Mat& picture);
-    static std::vector<cv::KeyPoint> non_maximum_suppression(const std::vector<std::vector<double>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N);
+    // static std::vector<cv::KeyPoint> non_maximum_suppression_worker(const std::vector<std::vector<double>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N);
 
     static void direction_gradients_worker(const cv::Mat& picture, const interval& interval, cv::Mat& Jx, cv::Mat& Jy, cv::Mat& Jxy);
     static void shitomasi_corner_detection_worker(const cv::Mat& Jx, const cv::Mat& Jy, const cv::Mat& Jxy, const interval& interval, const double& k, std::vector<std::vector<double>>& R_array);
     // static std::vector<cv::KeyPoint> non_maximum_suppression_worker(std::vector<std::vector<double>> R_values, const int& n_rows, const int& n_cols, const int& k, const int& N);
+    static std::vector<cv::KeyPoint> non_maximum_suppression(const std::vector<std::vector<double>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N);
 
 
 };

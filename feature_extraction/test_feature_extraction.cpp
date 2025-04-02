@@ -8,7 +8,7 @@
 
 #include <iostream>
 
-// #define DRAW_A_VISUALIZATION
+#define DRAW_A_VISUALIZATION
 
 void draw_score_distribution(const std::vector<std::vector<double>>& R_values, const std::string& win_name) {
 
@@ -89,30 +89,40 @@ std::vector<std::vector<uint8_t>> descriptor_for_s_pop(const std::string& filena
 
     auto local_mins_shitomasi = CornerDetection::non_maximum_suppression(shitomasi_response, n_rows, n_cols, 5, 1500);
 
+    // auto local_mins_shitomasi_bohdan = CornerDetection::non_maximum_suppression_bohdan(shitomasi_response, n_rows, n_cols, 5, 1500);
+
+
 #ifdef DRAW_A_VISUALIZATION
     // draw_score_distribution(shitomasi_response, "Response serial");
+    // //
+    // // cv::imshow("Jx", gradients[0]);
+    // // cv::imshow("Jy", gradients[1]);
+    // // cv::imshow("Jxy", gradients[2]);
+    // for (auto coords : local_mins_shitomasi_sofia) {
     //
-    // cv::imshow("Jx", gradients[0]);
-    // cv::imshow("Jy", gradients[1]);
-    // cv::imshow("Jxy", gradients[2]);
-    for (auto coords : local_mins_shitomasi) {
-
-        // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
-
-        cv::circle(image2, cv::Point(coords.pt.x, coords.pt.y), 1, cv::Scalar(0, 0, 255), 3);
-    }
-
-    cv::imshow("BOhdan with corners harris", image2);
-
-
-    cv::waitKey(0);
-    cv::destroyAllWindows();
+    //     // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
+    //
+    //     cv::circle(image2, cv::Point(coords.pt.x, coords.pt.y), 1, cv::Scalar(0, 0, 255), 3);
+    // }
+    //
+    // for (auto coords : local_mins_shitomasi_bohdan) {
+    //
+    //     // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
+    //
+    //     cv::circle(image1, cv::Point(coords.pt.x, coords.pt.y), 1, cv::Scalar(0, 0, 255), 3);
+    // }
+    //
+    //
+    // cv::imshow("NMS Bohdan", image1);
+    // cv::imshow("NMS Sofia", image2);
+    //
+    //
+    // cv::waitKey(0);
+    // cv::destroyAllWindows();
 
 #endif
 
-
-
-    std::cout << "Number of keypoints: " << local_mins_shitomasi.size() << std::endl;
+    // std::cout << "Number of keypoints: " << local_mins_shitomasi.size() << std::endl;
 
     auto descriptor = FREAK::FREAK_feature_description(local_mins_shitomasi, blurred, n_cols, n_rows);
 
@@ -175,16 +185,16 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> descript
 
     auto shitomasi_corners = CornerDetection::shitomasi_corner_detection(gradients[0], gradients[1], gradients[2], n_rows, n_cols, 0.05);
 #ifdef DRAW_A_VISUALIZATION
-    draw_score_distribution(shitomasi_corners, "Response serial");
-
-    cv::waitKey(0);
-    cv::destroyAllWindows();
+    // draw_score_distribution(shitomasi_corners, "Response serial");
+    //
+    // cv::waitKey(0);
+    // cv::destroyAllWindows();
 
 #endif
 
     auto local_mins_shitomasi = CornerDetection::non_maximum_suppression(shitomasi_corners, n_rows, n_cols, 5, 1500);
 
-    std::cout << "Number of key points in serial: " << local_mins_shitomasi.size() << std::endl;
+    // std::cout << "Number of key points in serial: " << local_mins_shitomasi.size() << std::endl;
 
     auto descriptor = FREAK::FREAK_feature_description(local_mins_shitomasi, blurred, n_cols, n_rows);
 
@@ -202,5 +212,7 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> descript
  //
  //
  //     auto descriptor = descriptor_for_s_pop(test_image);
+ //
+ //    // print_descriptor(descriptor);
  //
  // }

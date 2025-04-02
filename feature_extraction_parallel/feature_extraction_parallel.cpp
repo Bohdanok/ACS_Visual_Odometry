@@ -94,7 +94,7 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(cv::Mat& image, thr
                       cv::Point(interval.cols.end, interval.rows.end),
                       cv::Scalar(0, 255, 0), 1);
 #endif
-            print_interval(interval);
+            // print_interval(interval);
             futures_responses.emplace_back(pool.submit([&my_blurred_gray, &Jx, &Jy, &Jxy, &R_array, interval]() {
                 response_worker(my_blurred_gray, interval, Jx, Jy, Jxy, R_array);
             }));

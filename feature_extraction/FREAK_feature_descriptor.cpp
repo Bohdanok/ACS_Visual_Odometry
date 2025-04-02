@@ -33,7 +33,7 @@ std::vector<std::vector<uint8_t>> FREAK::FREAK_feature_description(const std::ve
 
     const size_t num_of_keypoints = key_points.size();
     std::vector<std::vector<uint8_t>> descriptor(num_of_keypoints, std::vector<uint8_t>(DESCRIPTOR_SIZE));
-    std::cout << "Rows: " << n_rows << "\t" << "Cols: " << n_cols << std::endl;
+    // std::cout << "Rows: " << n_rows << "\t" << "Cols: " << n_cols << std::endl;
 
     for (size_t i = 0; i < num_of_keypoints; i++) {
 
@@ -56,23 +56,6 @@ std::vector<std::vector<uint8_t>> FREAK::FREAK_feature_description(const std::ve
             const point pnt2 = point(static_cast<int>(key_point.pt.x +
                 pt2.pt.x * rotation_matrix[0] + pt2.pt.y * rotation_matrix[2]),
                 static_cast<int>(key_point.pt.y + (-1) * pt2.pt.x * rotation_matrix[1] + pt2.pt.y * rotation_matrix[3]));
-            // std::cout << "i: " << i << "\t" << "j: " << j << "\tPoint1: " << "(" << pnt1.x << ", " << pnt1.y << ")" << "\t" << "Point2: " << "(" << pnt2.x << ", " << pnt2.y << ")" << std::endl;
-
-            // descriptor[i][j] = 1;
-
-            // debug
-            // assert(pnt1.y > n_rows)
-            if (pnt1.y > n_rows || pnt1.x > n_cols) {
-                std::cout << "Key point with out of bounds: " << "(" << key_point.pt.x << ", " << key_point.pt.y << ")" << std::endl;
-                std::cout << "Before the rotation on " << angle << " radiants" << "\ti: " << i << "\t" << "j: " << j << "\tPoint1: " << "(" << pt1.pt.x << ", " << pt1.pt.y << ")" << std::endl;
-                std::cout << "After the rotation on " << angle << " radiants" << "\ti: " << i << "\t" << "j: " << j << "\tPoint1: " << "(" << pnt1.x << ", " << pnt1.y << ")" << std::endl;
-            }
-            if (pnt2.y > n_rows || pnt2.x > n_cols) {
-                std::cout << "Key point with out of bounds: " << "(" << key_point.pt.x << ", " << key_point.pt.y << ")" << std::endl;
-                std::cout << "Before the rotation on " << angle << " radiants" << "\ti: " << i << "\t" << "j: " << j << "\tPoint2: " << "(" << pt2.pt.x << ", " << pt2.pt.y << ")" << std::endl;
-                std::cout << "After the rotation on " << angle << " radiants" << "\ti: " << i << "\t" << "j: " << j << "\tPoint2: " << "(" << pnt2.x << ", " << pnt2.y << ")" << std::endl;
-                // std::cout << "i: " << i << "\t" << "j: " << j << "\tPoint1: " << "(" << pnt1.x << ", " << pnt1.y << ")" << "\t" << "Point2: " << "(" << pnt2.x << ", " << pnt2.y << ")" << std::endl;
-            }
 
             if (blurred_gray_picture.at<uchar>(pnt1.y, pnt1.x) > blurred_gray_picture.at<uchar>(pnt2.y, pnt2.x)) {
                 descriptor[i][j] = 1;

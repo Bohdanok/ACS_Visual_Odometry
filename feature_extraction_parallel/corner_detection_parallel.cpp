@@ -105,6 +105,62 @@ void CornerDetectionParallel::shitomasi_corner_detection_worker(const cv::Mat& J
 }
 
 
+// std::vector<cv::KeyPoint> CornerDetectionParallel::non_maximum_suppression_worker(const std::vector<std::vector<double>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
+//     std::vector<cv::KeyPoint> output_corners;
+//     output_corners.reserve(N);
+//
+//     std::vector<bool> active(n_rows * n_cols, true);
+// #define IDX(i, j) ((i) * n_cols + (j))
+//     // not to include out of bounce for retinal sampling
+//     constexpr double threshold = 1e-5;
+//     const int safe_margin_i = std::max(k / 2, 35);
+//     const int safe_margin_j = std::max(k / 2, 37);
+//
+//     std::vector<Candidate> candidates;
+//
+//     for (int i = safe_margin_i; i < n_rows - safe_margin_i; ++i) {
+//         for (int j = safe_margin_j; j < n_cols - safe_margin_j; ++j) {
+//             double score = R_values[i][j];
+//             if (score > threshold) {
+//                 candidates.push_back({score, i, j});
+//             }
+//         }
+//     }
+//
+//     std::sort(candidates.begin(), candidates.end());
+//
+//     for (const auto& candidate : candidates) {
+//         const int i = candidate.i;
+//         const int j = candidate.j;
+//         if (!active[IDX(i, j)]) continue;
+//         bool is_local_max = true;
+//         const double center_score = R_values[i][j];
+//         for (int di = -k / 2; di <= k / 2 && is_local_max; ++di) {
+//             for (int dj = -k / 2; dj <= k / 2; ++dj) {
+//                 const int ni = i + di;
+//                 const int nj = j + dj;
+//                 if (di == 0 && dj == 0) continue;
+//                 if (R_values[ni][nj] >= center_score) {
+//                     is_local_max = false;
+//                     break;
+//                 }
+//             }
+//         }
+//         if (!is_local_max) continue;
+//
+//         output_corners.emplace_back(cv::Point2f(static_cast<float>(j), static_cast<float>(i)), 1.0f);
+//         if (output_corners.size() >= static_cast<size_t>(N)) break;
+//
+//         for (int di = -k / 2; di <= k / 2; ++di) {
+//             for (int dj = -k / 2; dj <= k / 2; ++dj) {
+//                 active[IDX(i + di, j + dj)] = false;
+//             }
+//         }
+//     }
+//
+//     return output_corners;
+// }
+
 
 
 std::vector<cv::KeyPoint> CornerDetectionParallel::non_maximum_suppression(const std::vector<std::vector<double>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
@@ -150,3 +206,5 @@ std::vector<cv::KeyPoint> CornerDetectionParallel::non_maximum_suppression(const
     }
     return output_corners;
 }
+
+
