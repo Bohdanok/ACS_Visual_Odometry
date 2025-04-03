@@ -4,6 +4,8 @@ Visual odometry is a state estimation problem where the goal is to estimate the 
 
 **Authors**
 
+<br>[Sofiia Sampara](https://github.com/sofiasampara76)<br> [Sofiia Popeniuk](https://github.com/SofiiaPop)<br> [Ostap Pavlyshyn](https://github.com/Ostik24)
+
 **Requirements**
 
 C++17
@@ -33,7 +35,7 @@ for feature extraction and matching (branch Bohdan_and_Sofia)
 
 ./feature_extraction_with_matching ../images/f1.png ../images/f2.png
 
-**Core elements**
+**Results**
 
 Feature extraction is based on detecting corners using the Harris and Shi-Tomasi methods. Images are first converted to grayscale and denoised using Gaussian smoothing to improve detection robustness. Gradients and structure matrices are computed to identify distinct keypoints. Feature description uses the FREAK descriptor, which is efficient and inspired by the retinal sampling pattern of the human eye. FREAK descriptors are binary and support rotation invariance, making them suitable for real-time visual tracking.
 
