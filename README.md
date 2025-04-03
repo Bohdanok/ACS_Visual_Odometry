@@ -3,8 +3,7 @@
 Visual odometry is a state estimation problem where the goal is to estimate the camera’s (relative) poses  in the 3D world from an image sequence. Visual odometry is meant to run in real-time and is crucial for autonomous navigation, mission planning, etc. The implementation is benchmarked against OpenCV-based solutions and designed to serve as a foundation for further developments in SLAM and sensor fusion.
 
 **Authors**
-
-<br>[Sofiia Sampara](https://github.com/sofiasampara76)<br> [Sofiia Popeniuk](https://github.com/SofiiaPop)<br> [Ostap Pavlyshyn](https://github.com/Ostik24)
+<br>[Bohdan Milian](https://github.com/Bohdanok)<br>[Sofiia Sampara](https://github.com/sofiasampara76)<br> [Sofiia Popeniuk](https://github.com/SofiiaPop)<br> [Ostap Pavlyshyn](https://github.com/Ostik24)
 
 **Requirements**
 
