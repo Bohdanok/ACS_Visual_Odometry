@@ -30,9 +30,15 @@ cmake ..
 make
 
 **Usage**
-for feature extraction and matching (branch Bohdan_and_Sofia)
+for feature extraction and matching 
 
-./feature_extraction_with_matching ../images/f1.png ../images/f2.png
+For the serial implementation:
+
+./serial_feature_extraction_with_matching ../images/f1.png ../images/f2.png
+
+For the parallel implementation:
+
+parallel_feature_extraction_with_matching ../images/f1.png ../images/f2.png NUMBER_OF_THREADS BLOCKSIZE_FOR_TASKS_DECOMPOSITION
 
 **Results**
 
