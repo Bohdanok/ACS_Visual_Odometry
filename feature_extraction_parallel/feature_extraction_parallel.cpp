@@ -214,28 +214,35 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
 
 
     for (int i = 0; i < n_rows; i += BLOCK_SIZE) {
-        for (int j = 0; j < n_cols; j += BLOCK_SIZE) {
-            const interval interval = {{j, std::min(n_cols, j + BLOCK_SIZE + 2)}, {i, std::min(n_rows, i + BLOCK_SIZE + 2)}};
-            // intervals.emplace_back(interval);
+        // const interval interval = {{j, std::min(n_cols, j + BLOCK_SIZE + 2)}, {i, std::min(n_rows, i + BLOCK_SIZE + 2)}};
+        // const interval interval = {{0, std::min(i + BLOCK_SIZE, n_rows)}, {i, std::min(n_rows, i + BLOCK_SIZE + 2)}};
+        const interval interval = {{0, n_cols}, {i, std::min(i + BLOCK_SIZE + 4, n_rows)}};
+        // intervals.emplace_back(interval);
 #ifdef VISUALIZATION
-            cv::rectangle(image,
-                      cv::Point(interval.cols.start, interval.rows.start),
-                      cv::Point(interval.cols.end, interval.rows.end),
-                      cv::Scalar(0, 255, 0), 1);
-            print_interval(interval);
-
+        cv::rectangle(image,
+                  cv::Point(interval.cols.start, interval.rows.start),
+                  cv::Point(interval.cols.end, interval.rows.end),
+                  cv::Scalar(0, 255, 0), 1);
 #endif
-            futures_responses.emplace_back(pool.submit([&my_blurred_gray, &Jx, &Jy, &Jxy, &R_array, interval]() {
-                response_worker(my_blurred_gray, interval, Jx, Jy, Jxy, R_array);
-            }));
-        }
+        // print_interval(interval);
+        futures_responses.emplace_back(pool.submit([&my_blurred_gray, &Jx, &Jy, &Jxy, &R_array, interval]() {
+            response_worker(my_blurred_gray, interval, Jx, Jy, Jxy, R_array);
+        }));
     }
 
     for (auto &future : futures_responses) {
         future.get();
     }
 
-    const auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 1500);
+    auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 1500);
+
+    std::sort(local_mins_shitomasi.begin(), local_mins_shitomasi.end(), [](const cv::KeyPoint& a, const cv::KeyPoint& b) {
+        const int ay = static_cast<int>(a.pt.y);
+        const int by = static_cast<int>(b.pt.y);
+        if (ay == by)
+            return static_cast<int>(a.pt.x) < static_cast<int>(b.pt.x);
+        return ay < by;
+    });
 
     #ifdef VISUALIZATION
         for (auto coords : local_mins_shitomasi) {
