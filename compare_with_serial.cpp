@@ -100,8 +100,8 @@
 
 
 int main() {
-    const std::string filename = "/home/julfy1/Documents/4th_term/ACS/ACS_Visual_Odometry_SOFIA/ACS_Visual_Odometry/images/Zhovkva2.jpg";
-
+    // const std::string filename = "/home/julfy1/Documents/4th_term/ACS/ACS_Visual_Odometry_SOFIA/ACS_Visual_Odometry/images/Zhovkva2.jpg";
+    const std::string filename = "C:\\Users\\milian.pn\\Documents\\ACS\\ACS_Visual_Odometry\\images\\Zhovkva2.jpg";
     cv::Mat image = cv::imread(filename);
 
 

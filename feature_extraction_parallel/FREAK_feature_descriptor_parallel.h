@@ -24,7 +24,7 @@ struct test {
 constexpr size_t NUM_POINTS = 43;
 constexpr size_t NUM_PAIRS = (NUM_POINTS * (NUM_POINTS - 1)) / 2;
 
-constexpr size_t KEY_POINTS_PER_TASK = 10;
+constexpr size_t KEY_POINTS_PER_TASK = 30;
 
 constexpr std::array<point, NUM_POINTS> predefined_point_for_matching = {{
     {33, 0}, {17, -30}, {-17, -30}, {-33, 0}, {-17, 30}, {17, 30},

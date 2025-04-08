@@ -8,7 +8,8 @@
 #include <future>
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
-#include <opencv2/xfeatures2d.hpp>
+
+// #include <opencv2/xfeatures2d.hpp>
 
 #ifdef PARALLEL_IMPLEMENTATION
     #include "feature_extraction_parallel/feature_extraction_parallel.h"
