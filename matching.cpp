@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <vector>
 #include <unordered_set>
@@ -7,10 +8,20 @@
 #include <future>
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
-#include <opencv2/xfeatures2d.hpp>
 
-const int BINARY_DESCRIPTOR_SIZE = 32;
-const double MATCH_THRESHOLD = 0.5;
+// #include <opencv2/xfeatures2d.hpp>
+
+#ifdef PARALLEL_IMPLEMENTATION
+    #include "feature_extraction_parallel/feature_extraction_parallel.h"
+#else
+    #include "feature_extraction/test_feature_extraction.h"
+#endif
+
+
+// #define VISUALIZATION
+
+constexpr int BINARY_DESCRIPTOR_SIZE = 32;
+constexpr double MATCH_THRESHOLD = 0.5;
 
 inline std::chrono::high_resolution_clock::time_point
 get_current_time_fenced()
@@ -39,69 +50,126 @@ int hammingDistance(const uint8_t* d1, const uint8_t* d2, int length) {
     return distance;
 }
 
-std::vector<std::pair<int, int>> matchBinaryKeypoints(
-    const cv::Mat& descriptors1,
-    const cv::Mat& descriptors2,
-    int user_threads = 1,
-    float ratioThreshold = 0.75f)
+std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsParallel(
+    const std::vector<std::vector<uint8_t>>& desc1,
+    const std::vector<std::vector<uint8_t>>& desc2,
+    float ratioThreshold = 0.75f,
+    int numThreads = std::thread::hardware_concurrency())
 {
-    // const int max_threads = std::thread::hardware_concurrency();
-    // std::cout << max_threads<<std::endl;
-    // const int num_threads = (user_threads > 0) ? user_threads : max_threads;
-    const int num_threads = user_threads;
-    std::cout << num_threads << std::endl;
-    // if (user_threads > max_threads) {
-    //     std::cout << "Warning: Requested threads (" << user_threads 
-    //             << ") exceed hardware concurrency (" << max_threads 
-    //             << "). Limiting to " << max_threads << " threads."<<std::endl;
-    // }
+    std::vector<std::pair<int, int>> allMatches;
+    if (desc1.empty() || desc2.empty()) return allMatches;
 
-    std::vector<std::pair<int, int>> matches;
-    std::vector<std::vector<std::pair<int, int>>> thread_matches(num_threads);
+    int descriptorLength = desc1[0].size();
+    size_t total = desc1.size();
+    size_t chunkSize = (total + numThreads - 1) / numThreads;
 
-    auto worker = [&](int start, int end, int thread_id) {
-        for (int i = start; i < end; ++i) {
-            int bestIdx = -1, secondBestIdx = -1;
-            int bestDist = std::numeric_limits<int>::max();
-            int secondBestDist = std::numeric_limits<int>::max();
-            const uint8_t* desc1 = descriptors1.ptr<uint8_t>(i);
-            for (int j = 0; j < descriptors2.rows; ++j) {
-                const uint8_t* desc2 = descriptors2.ptr<uint8_t>(j);
-                int dist = hammingDistance(desc1, desc2, descriptors1.cols);
-                if (dist < bestDist) {
-                    secondBestDist = bestDist;
-                    secondBestIdx = bestIdx;
-                    bestDist = dist;
-                    bestIdx = j;
-                } else if (dist < secondBestDist) {
-                    secondBestDist = dist;
-                    secondBestIdx = j;
+    std::vector<std::future<std::vector<std::pair<int, int>>>> futures;
+
+    for (int t = 0; t < numThreads; ++t) {
+        size_t startIdx = t * chunkSize;
+        size_t endIdx = std::min(startIdx + chunkSize, total);
+
+        futures.emplace_back(std::async(std::launch::async, [&, startIdx, endIdx]() {
+            std::vector<std::pair<int, int>> localMatches;
+            for (size_t i = startIdx; i < endIdx; ++i) {
+                int bestIdx = -1, secondBestIdx = -1;
+                int bestDist = std::numeric_limits<int>::max();
+                int secondBestDist = std::numeric_limits<int>::max();
+
+                for (size_t j = 0; j < desc2.size(); ++j) {
+                    int dist = hammingDistance(desc1[i].data(), desc2[j].data(), descriptorLength);
+                    if (dist < bestDist) {
+                        secondBestDist = bestDist;
+                        secondBestIdx = bestIdx;
+                        bestDist = dist;
+                        bestIdx = j;
+                    } else if (dist < secondBestDist) {
+                        secondBestDist = dist;
+                        secondBestIdx = j;
+                    }
+                }
+
+                if (bestIdx != -1 && secondBestIdx != -1 &&
+                    bestDist < ratioThreshold * secondBestDist) {
+                    localMatches.emplace_back(i, bestIdx);
                 }
             }
-            if (bestIdx != -1 && secondBestIdx != -1 && bestDist < ratioThreshold * secondBestDist) {
-                thread_matches[thread_id].emplace_back(i, bestIdx);
-            }
-        }
-    };
-
-    std::vector<std::thread> threads;
-    int chunk_size = descriptors1.rows / num_threads;
-    int start = 0;
-
-    for (int t = 0; t < num_threads; ++t) {
-        int end = (t == num_threads - 1) ? descriptors1.rows : start + chunk_size;
-        threads.emplace_back(worker, start, end, t);
-        start = end;
+            return localMatches;
+        }));
     }
 
-    for (auto& th : threads) th.join();
-
-    for (const auto& tm : thread_matches) {
-        matches.insert(matches.end(), tm.begin(), tm.end());
+    for (auto& f : futures) {
+        auto result = f.get();
+        allMatches.insert(allMatches.end(), result.begin(), result.end());
     }
 
-    return matches;
+    return allMatches;
 }
+
+std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
+    const std::vector<std::vector<uint8_t>>& desc1,
+    const std::vector<std::vector<uint8_t>>& desc2,
+    thread_pool& pool,
+    int numThreads,
+    float ratioThreshold = 0.75f)
+{
+    std::vector<std::pair<int, int>> allMatches;
+    if (desc1.empty() || desc2.empty()) return allMatches;
+
+    const int descriptorLength = desc1[0].size();
+    const size_t total = desc1.size();
+    const int blocks = numThreads;  // simpler for now
+    const size_t chunkSize = (total + blocks - 1) / blocks;
+
+    std::vector<std::future<std::vector<std::pair<int, int>>>> futures;
+
+    for (int t = 0; t < blocks; ++t) {
+        size_t startIdx = t * chunkSize;
+        size_t endIdx = std::min(startIdx + chunkSize, total);
+        if (startIdx >= total) break;
+
+        futures.emplace_back(pool.submit([&, startIdx, endIdx]() {
+            std::vector<std::pair<int, int>> localMatches;
+            localMatches.reserve(chunkSize);
+
+            for (size_t i = startIdx; i < endIdx; ++i) {
+                int bestIdx = -1, secondBestIdx = -1;
+                int bestDist = std::numeric_limits<int>::max();
+                int secondBestDist = std::numeric_limits<int>::max();
+
+                for (size_t j = 0; j < desc2.size(); ++j) {
+                    int dist = hammingDistance(desc1[i].data(), desc2[j].data(), descriptorLength);
+                    if (dist < bestDist) {
+                        secondBestDist = bestDist;
+                        secondBestIdx = bestIdx;
+                        bestDist = dist;
+                        bestIdx = j;
+                    } else if (dist < secondBestDist) {
+                        secondBestDist = dist;
+                        secondBestIdx = j;
+                    }
+                }
+
+                if (bestIdx != -1 && secondBestIdx != -1 &&
+                    bestDist < ratioThreshold * secondBestDist) {
+                    localMatches.emplace_back(i, bestIdx);
+                }
+            }
+
+            return localMatches;
+        }));
+    }
+
+    for (auto& f : futures) {
+        std::vector<std::pair<int, int>> result = std::move(f.get());
+        allMatches.insert(allMatches.end(),
+                          std::make_move_iterator(result.begin()),
+                          std::make_move_iterator(result.end()));
+    }
+
+    return allMatches;
+}
+
 
 struct PairHash {
     std::size_t operator()(const std::pair<int, int>& p) const {
@@ -173,48 +241,84 @@ int main(int argc, char** argv) {
         std::cerr << "Error reading images." << std::endl;
         return -1;
     }
+#ifdef PARALLEL_IMPLEMENTATION
+    if (!is_number(argv[3]))
+    {
+        std::cerr << "The number of threads has to be a positive number!" << std::endl;
+        return 69;
+    }
 
-    cv::Ptr<cv::BRISK> brisk = cv::BRISK::create();
+    if (!is_number(argv[4]))
+    {
+        std::cerr << "The block size has to be a positive number!" << std::endl;
+        return -69;
+    }
 
-    std::vector<cv::KeyPoint> briskKps1, briskKps2;
-    cv::Mat briskDesc1, briskDesc2;
+    NUMBER_OF_THREADS = std::stoi(argv[3]);
+    BLOCK_SIZE = std::stoi(argv[4]);
 
-    brisk->detectAndCompute(img1, cv::noArray(), briskKps1, briskDesc1);
-    brisk->detectAndCompute(img2, cv::noArray(), briskKps2, briskDesc2);
+    // std::cout << "Number of threads: " << NUMBER_OF_THREADS << std::endl;
+    // std::cout << "Block size: " << BLOCK_SIZE << std::endl;
 
-    auto startCustomBin = get_current_time_fenced();
+#endif
 
-    std::vector<std::pair<int, int>> customBinMatches = matchBinaryKeypoints(briskDesc1, briskDesc2, std::stoi(argv[3]));
 
-    auto endCustomBin = get_current_time_fenced();
 
-    auto startCvBin = get_current_time_fenced();
-    cv::BFMatcher bfMatcherHamming(cv::NORM_HAMMING);
-    std::vector<cv::DMatch> cvBinMatches;
-    bfMatcherHamming.match(briskDesc1, briskDesc2, cvBinMatches);
-    auto endCvBin = get_current_time_fenced();
+    // std::vector<std::vector<uint8_t>> descs1 = descriptor_for_s_pop(argv[1]);
+    // std::vector<std::vector<uint8_t>> descs2 = descriptor_for_s_pop(argv[2]);
+    auto start_feature_extraction = get_current_time_fenced();
 
-    double timeCustomBin = std::chrono::duration<double, std::milli>(endCustomBin - startCustomBin).count();
-    double timeCvBin = std::chrono::duration<double, std::milli>(endCvBin - startCvBin).count();
+#ifdef PARALLEL_IMPLEMENTATION
+    cv::Mat image1 = cv::imread(argv[1]);
+    cv::Mat image2 = cv::imread(argv[2]);
 
-    std::cout << "Execution Times (ms):\n"
-              << "Custom Binary: " << timeCustomBin << "\n"
-              << "OpenCV Binary: " << timeCvBin << "\n";
-    
-    std::vector<std::pair<int, int>> commonBinMatches = findCommonMatches(customBinMatches, cvBinMatches);
-    std::cout << " | Custom Binary Matches: " << customBinMatches.size()
-              << " | CV Binary Matches: " << cvBinMatches.size()
-              << " | Common Binary Matches: " << commonBinMatches.size() << std::endl;
+    thread_pool pool1(NUMBER_OF_THREADS);
+    // thread_pool pool2(NUMBER_OF_THREADS);
 
-    std::vector<cv::DMatch> customBinDMatches = convertToDMatch(customBinMatches);
+    auto descs1 = feature_extraction_manager_with_points(image1, pool1);
+    auto descs2 = feature_extraction_manager_with_points(image2, pool1);
 
-    auto ransacBinMatches = applyRANSAC(customBinDMatches, briskKps1, briskKps2);
+#else
+    auto descs1 = descriptor_with_points(argv[1]);
+    auto descs2 = descriptor_with_points(argv[2]);
+#endif
+    auto end_feature_extraction = get_current_time_fenced();
 
-    cv::Mat floatMatchesImg, binaryMatchesImg;;
-    cv::drawMatches(img1, briskKps1, img2, briskKps2, ransacBinMatches, binaryMatchesImg);
+    std::cout << "Number of keypoints: " << std::get<1>(descs1).size() << std::endl;
+    std::cout << "Number of keypoints: " << std::get<1>(descs2).size() << std::endl;
 
-    cv::imshow("BRISK Matches", binaryMatchesImg);
+
+    std::cout << "Time for feature extraction: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end_feature_extraction - start_feature_extraction).count()
+              << " ms" << std::endl;
+
+
+    std::vector<std::pair<int, int>> customMatches;
+    auto start = get_current_time_fenced();
+    customMatches = matchCustomBinaryDescriptorsThreadPool(
+    	std::get<0>(descs1),
+    	std::get<0>(descs2),
+    	pool1,
+    	NUMBER_OF_THREADS
+	);
+
+    auto end = get_current_time_fenced();
+
+    // std::cout <<
+
+    std::cout << "Time for matching: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+              << " ms" << std::endl;
+
+
+    std::cout << "Custom binary matches: " << customMatches.size() << std::endl;
+//    std::cout << "Is 1 object" << (customMatches.size() == MATCH_THRESHOLD * ? "yes" : " not");
+#ifdef VISUALIZATION
+    cv::Mat binaryMatchesImg;
+    cv::drawMatches(img1, std::get<1>(descs1), img2, std::get<1>(descs2), convertToDMatch(customMatches), binaryMatchesImg);
+    cv::imshow("FREAK Matches", binaryMatchesImg);
     cv::waitKey(0);
+#endif
 
     return 0;
 }
