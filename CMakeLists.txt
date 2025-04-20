@@ -17,7 +17,6 @@ set(PROJECT_PARALLEL_FEATURE_EXTRACTION_WITH_MATCHING parallel_feature_extractio
 set(BOHDAN_TEST bohdan_test)
 set(PROJECT_TEST_SERIAL_MATCHING serial_feature_extraction_with_matching)
 
-
 add_executable(${PROJECT_FEATURE_EXTRACTION_WITH_MATCHING} feature_extraction/test_feature_extraction.cpp feature_extraction/test_feature_extraction.h
         feature_extraction/corner_detection.cpp feature_extraction/corner_detection.h
         feature_extraction/FREAK_feature_descriptor.cpp
@@ -81,3 +80,10 @@ add_executable(${PROJECT_TEST_SERIAL_MATCHING} feature_extraction/test_feature_e
 
 target_include_directories(${PROJECT_TEST_SERIAL_MATCHING} PRIVATE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_TEST_SERIAL_MATCHING} PRIVATE ${OpenCV_LIBS})
+
+
+add_executable(${BOHDAN_TEST} test_opencl.cpp
+        test_opencl.h)
+
+find_package(OpenCL REQUIRED)
+target_link_libraries(${BOHDAN_TEST}  OpenCL::OpenCL)
