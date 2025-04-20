@@ -19,7 +19,7 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> VisualOd
 }
 
 std::vector<std::pair<int, int>> VisualOdometry::match_descriptors(const std::vector<std::vector<uint8_t>> &desc1, const std::vector<std::vector<uint8_t>> &desc2) {
-    return matchCustomBinaryDescriptorsThreadPool_v2(desc1, desc2, VO_pool);
+    return matchCustomBinaryDescriptorsThreadPool(desc1, desc2, VO_pool, number_of_threads);
 }
 
 
