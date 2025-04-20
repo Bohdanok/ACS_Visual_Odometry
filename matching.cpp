@@ -1,4 +1,4 @@
-
+#include "feature_extraction_parallel/threadpool.h"
 #include <iostream>
 #include <vector>
 #include <unordered_set>
@@ -7,9 +7,9 @@
 #include <thread>
 #include <future>
 #include <opencv2/opencv.hpp>
+#include <optional>
 #include <opencv2/features2d.hpp>
-
-// #include <opencv2/xfeatures2d.hpp>
+#include <opencv2/xfeatures2d.hpp>
 
 #ifdef PARALLEL_IMPLEMENTATION
     #include "feature_extraction_parallel/feature_extraction_parallel.h"
@@ -18,7 +18,7 @@
 #endif
 
 
-#define VISUALIZATION
+// #define VISUALIZATION
 
 constexpr int BINARY_DESCRIPTOR_SIZE = 32;
 constexpr double MATCH_THRESHOLD = 0.5;
@@ -61,6 +61,9 @@ std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsParallel(
 
     int descriptorLength = desc1[0].size();
     size_t total = desc1.size();
+    // const int granularity = 128;
+    // size_t chunkSize = std::max(desc1.size() / (numThreads * granularity), size_t(1));
+
     size_t chunkSize = (total + numThreads - 1) / numThreads;
 
     std::vector<std::future<std::vector<std::pair<int, int>>>> futures;
@@ -118,12 +121,11 @@ std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
 
     const int descriptorLength = desc1[0].size();
     const size_t total = desc1.size();
-    const int blocks = numThreads;  // simpler for now
-    const size_t chunkSize = (total + blocks - 1) / blocks;
+    const size_t chunkSize = (total + numThreads - 1) / numThreads;
 
     std::vector<std::future<std::vector<std::pair<int, int>>>> futures;
 
-    for (int t = 0; t < blocks; ++t) {
+    for (int t = 0; t < numThreads; ++t) {
         size_t startIdx = t * chunkSize;
         size_t endIdx = std::min(startIdx + chunkSize, total);
         if (startIdx >= total) break;
@@ -228,11 +230,62 @@ std::vector<cv::DMatch> applyRANSAC(
     return filteredMatches;
 }
 
+std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool_v2(
+    const std::vector<std::vector<uint8_t>>& desc1,
+    const std::vector<std::vector<uint8_t>>& desc2,
+    thread_pool& pool,
+    float ratioThreshold = 0.75f)
+{
+    const int descriptorLength = desc1[0].size();
+    std::vector<std::future<std::optional<std::pair<int, int>>>> futures;
+
+    for (size_t i = 0; i < desc1.size(); ++i) {
+        futures.emplace_back(pool.submit([=, &desc1, &desc2]() -> std::optional<std::pair<int, int>> {
+            int bestIdx = -1, secondBestIdx = -1;
+            int bestDist = std::numeric_limits<int>::max();
+            int secondBestDist = std::numeric_limits<int>::max();
+
+            for (size_t j = 0; j < desc2.size(); ++j) {
+                int dist = hammingDistance(desc1[i].data(), desc2[j].data(), descriptorLength);
+                if (dist < bestDist) {
+                    secondBestDist = bestDist;
+                    secondBestIdx = bestIdx;
+                    bestDist = dist;
+                    bestIdx = j;
+                } else if (dist < secondBestDist) {
+                    secondBestDist = dist;
+                    secondBestIdx = j;
+                }
+            }
+
+            if (bestIdx != -1 && secondBestIdx != -1 &&
+                bestDist < ratioThreshold * secondBestDist) {
+                return std::make_pair(i, bestIdx);
+            }
+            return std::nullopt;
+        }));
+    }
+
+    std::vector<std::pair<int, int>> allMatches;
+    allMatches.reserve(desc1.size());
+
+    for (auto& f : futures) {
+        if (auto opt = f.get()) {
+            allMatches.push_back(*opt);
+        }
+    }
+
+    return allMatches;
+}
+
 int main(int argc, char** argv) {
     if (argc < 3) {
         std::cout << "Usage: ./matching <image1> <image2>" << std::endl;
         return -1;
     }
+
+    int NUMBER_OF_THREADS = std::stoi(argv[3]);
+    thread_pool pool1(NUMBER_OF_THREADS);
 
     cv::Mat img1 = cv::imread(argv[1], cv::IMREAD_GRAYSCALE);
     cv::Mat img2 = cv::imread(argv[2], cv::IMREAD_GRAYSCALE);
@@ -254,7 +307,7 @@ int main(int argc, char** argv) {
         return -69;
     }
 
-    NUMBER_OF_THREADS = std::stoi(argv[3]);
+    // NUMBER_OF_THREADS =
     BLOCK_SIZE = std::stoi(argv[4]);
 
     // std::cout << "Number of threads: " << NUMBER_OF_THREADS << std::endl;
@@ -272,7 +325,7 @@ int main(int argc, char** argv) {
     cv::Mat image1 = cv::imread(argv[1]);
     cv::Mat image2 = cv::imread(argv[2]);
 
-    thread_pool pool1(NUMBER_OF_THREADS);
+    // thread_pool pool1(NUMBER_OF_THREADS);
     // thread_pool pool2(NUMBER_OF_THREADS);
 
     auto descs1 = feature_extraction_manager_with_points(image1, pool1);
