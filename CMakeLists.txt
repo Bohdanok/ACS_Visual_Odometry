@@ -16,6 +16,7 @@ set(PROJECT_PARALLEL_FEATURE_EXTRACTION test_parallel)
 set(PROJECT_PARALLEL_FEATURE_EXTRACTION_WITH_MATCHING parallel_feature_extraction_with_matching)
 set(BOHDAN_TEST bohdan_test)
 set(PROJECT_TEST_SERIAL_MATCHING serial_feature_extraction_with_matching)
+set(VISUAL_ODOMETRY visual_odometry)
 
 add_executable(${PROJECT_FEATURE_EXTRACTION_WITH_MATCHING} feature_extraction/test_feature_extraction.cpp feature_extraction/test_feature_extraction.h
         feature_extraction/corner_detection.cpp feature_extraction/corner_detection.h
@@ -87,3 +88,14 @@ add_executable(${BOHDAN_TEST} test_opencl.cpp
 
 find_package(OpenCL REQUIRED)
 target_link_libraries(${BOHDAN_TEST}  OpenCL::OpenCL)
+
+
+add_executable(${VISUAL_ODOMETRY}
+        feature_extraction_parallel/corner_detection_parallel.cpp
+        feature_extraction_parallel/FREAK_feature_descriptor_parallel.cpp
+        feature_extraction_parallel/feature_extraction_parallel.cpp
+        feature_matching_parallel/feature_matching_parallel.cpp
+        VisualOdometry.cpp)
+
+target_include_directories(${VISUAL_ODOMETRY} PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(${VISUAL_ODOMETRY} PRIVATE ${OpenCV_LIBS})
