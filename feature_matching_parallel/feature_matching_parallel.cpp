@@ -5,7 +5,9 @@
 #include "feature_matching_parallel.h"
 
 
-#include "feature_extraction_parallel/threadpool.h"
+#include "../feature_extraction_parallel/threadpool.h"
+#include "../feature_extraction_parallel/feature_extraction_parallel.h"
+
 #include <iostream>
 #include <vector>
 #include <unordered_set>
@@ -18,19 +20,18 @@
 #include <opencv2/features2d.hpp>
 #include <opencv2/xfeatures2d.hpp>
 
-#ifdef PARALLEL_IMPLEMENTATION
-    #include "feature_extraction_parallel/feature_extraction_parallel.h"
-#else
-    #include "feature_extraction/test_feature_extraction.h"
-#endif
 
+// #ifdef PARALLEL_IMPLEMENTATION
+//     #include "feature_extraction_parallel/feature_extraction_parallel.h"
+// #else
+//     #include "feature_extraction/test_feature_extraction.h"
+// #endif
+//
 
 // #define VISUALIZATION
-#define TIME_MEASUREMENT
 
 
-constexpr int BINARY_DESCRIPTOR_SIZE = 32;
-constexpr double MATCH_THRESHOLD = 0.5;
+
 
 inline std::chrono::high_resolution_clock::time_point
 get_current_time_fenced()
@@ -62,8 +63,8 @@ int hammingDistance(const uint8_t* d1, const uint8_t* d2, int length) {
 std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsParallel(
     const std::vector<std::vector<uint8_t>>& desc1,
     const std::vector<std::vector<uint8_t>>& desc2,
-    float ratioThreshold = 0.75f,
-    int numThreads = std::thread::hardware_concurrency())
+    const float ratioThreshold,
+    const int numThreads)
 {
     std::vector<std::pair<int, int>> allMatches;
     if (desc1.empty() || desc2.empty()) return allMatches;
@@ -122,8 +123,8 @@ std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
     const std::vector<std::vector<uint8_t>>& desc1,
     const std::vector<std::vector<uint8_t>>& desc2,
     thread_pool& pool,
-    int numThreads,
-    float ratioThreshold = 0.75f)
+    const int numThreads,
+    const float ratioThreshold)
 {
     std::vector<std::pair<int, int>> allMatches;
     if (desc1.empty() || desc2.empty()) return allMatches;
@@ -182,12 +183,6 @@ std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
 }
 
 
-struct PairHash {
-    std::size_t operator()(const std::pair<int, int>& p) const {
-        return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 1);
-    }
-};
-
 
 std::vector<std::pair<int, int>> findCommonMatches(
     const std::vector<std::pair<int, int>>& customMatches,
@@ -243,7 +238,7 @@ std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool_v2(
     const std::vector<std::vector<uint8_t>>& desc1,
     const std::vector<std::vector<uint8_t>>& desc2,
     thread_pool& pool,
-    float ratioThreshold = 0.75f)
+    const float ratioThreshold)
 {
     const int descriptorLength = desc1[0].size();
     std::vector<std::future<std::optional<std::pair<int, int>>>> futures;

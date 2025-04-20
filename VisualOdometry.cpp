@@ -22,7 +22,3 @@ std::vector<std::pair<int, int>> VisualOdometry::match_descriptors(const std::ve
     return matchCustomBinaryDescriptorsThreadPool(desc1, desc2, VO_pool, number_of_threads);
 }
 
-
-// int main() {
-//     std::cout << "Hi from main!" << std::endl;
-// }
