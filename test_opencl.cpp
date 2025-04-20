@@ -11,7 +11,7 @@
 #include "test_opencl.h"
 
 unsigned int get_best_opencl_platform() {
-    
+    // ...
 }
 
 

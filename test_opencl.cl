@@ -1,5 +1,5 @@
-__kervel void hello_world(char* data) {
-    data[0] = 'H';
-    data[1] = 'i';
-    data[2] = '!';
+kernel void
+scalar_add (global const float *a, global const float *b, global float *result) {
+    int id = get_global_id(0);
+    result[id] = a[id] + b[id];
 }
