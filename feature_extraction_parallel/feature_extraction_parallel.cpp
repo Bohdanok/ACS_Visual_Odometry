@@ -124,6 +124,12 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(cv::Mat& image, thr
     for (auto &future : futures_responses) {
         future.get();
     }
+    // cv::imshow("Jx", Jx);
+    // cv::imshow("Jy", Jy);
+    // cv::imshow("Jxy", Jxy);
+    //
+    // cv::waitKey(0);
+    // cv::destroyAllWindows();
 
     auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 1500);
 
@@ -233,6 +239,12 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
     for (auto &future : futures_responses) {
         future.get();
     }
+    cv::imshow("Jx", Jx);
+    cv::imshow("Jy", Jy);
+    cv::imshow("Jxy", Jxy);
+
+    cv::waitKey(0);
+    cv::destroyAllWindows();
 
     auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 1500);
 
