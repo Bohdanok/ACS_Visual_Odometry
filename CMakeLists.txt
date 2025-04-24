@@ -17,6 +17,7 @@ set(PROJECT_PARALLEL_FEATURE_EXTRACTION_WITH_MATCHING parallel_feature_extractio
 set(PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING GPU_parallel_feature_extraction_with_matching)
 set(BOHDAN_TEST bohdan_test)
 set(PROJECT_TEST_SERIAL_MATCHING serial_feature_extraction_with_matching)
+set(PRECOMPILE_THE_SOURCE precompile_the_source)
 
 add_executable(${PROJECT_FEATURE_EXTRACTION_WITH_MATCHING}
         feature_extraction/test_feature_extraction.cpp
@@ -66,17 +67,39 @@ add_executable(${PROJECT_TEST_SERIAL_MATCHING}
 target_include_directories(${PROJECT_TEST_SERIAL_MATCHING} PRIVATE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_TEST_SERIAL_MATCHING} PRIVATE ${OpenCV_LIBS})
 
+# ////////////////////////
+
+add_executable(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING}
+        feature_extraction_parallel_GPU/corner_detection_parallel_GPU.cpp
+        feature_extraction_parallel_GPU/FREAK_feature_descriptor_parallel_GPU.cpp
+        feature_extraction_parallel_GPU/feature_extraction_parallel_GPU.cpp
+        # matching.cpp
+)
+
+target_include_directories(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
+
+
 add_executable(${BOHDAN_TEST}
         test_opencl.cpp)
 
 target_include_directories(${BOHDAN_TEST} PRIVATE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(${BOHDAN_TEST} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
 
-add_executable(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING}
-        feature_extraction_parallel_GPU/corner_detection_parallel.cpp
-        feature_extraction_parallel_GPU/FREAK_feature_descriptor_parallel.cpp
-        feature_extraction_parallel_GPU/feature_extraction_parallel.cpp
-        matching.cpp)
+add_executable(${PRECOMPILE_THE_SOURCE}
+        feature_extraction_parallel_GPU/precompile_kernel_source_code.cpp)
 
-target_include_directories(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
+target_include_directories(${PRECOMPILE_THE_SOURCE} PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(${PRECOMPILE_THE_SOURCE} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
+
+
+
+add_custom_target(run_precompile_kernel
+        COMMAND ${CMAKE_COMMAND} -E echo "Running kernel precompilation step"
+        COMMAND $<TARGET_FILE:${PRECOMPILE_THE_SOURCE}>
+        DEPENDS ${PRECOMPILE_THE_SOURCE}
+        COMMENT "Running ${PRECOMPILE_THE_SOURCE} to generate kernel binary"
+)
+
+add_dependencies(${BOHDAN_TEST} run_precompile_kernel)
+

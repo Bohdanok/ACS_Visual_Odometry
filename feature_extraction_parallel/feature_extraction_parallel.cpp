@@ -8,6 +8,16 @@
 #include <opencv2/highgui.hpp>
 
 // #define VISUALIZATION
+#define INTERMEDIATE_TIME_MEASUREMENT
+
+inline std::chrono::high_resolution_clock::time_point
+get_current_time_fenced()
+{
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    auto res_time = std::chrono::high_resolution_clock::now();
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    return res_time;
+}
 
 void print_interval(const interval& interval) {
     std::cout << "Start: (" << interval.cols.start << ", " << interval.rows.start << ")\tEnd: (" << interval.cols.end << ", " << interval.rows.end << ")" << std::endl;
@@ -204,6 +214,9 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
     const cv::Mat blurred = CornerDetectionParallel::custom_bgr2gray(image);
 
     cv::GaussianBlur(blurred, my_blurred_gray, cv::Size(7, 7), 0);
+#ifdef INTERMEDIATE_TIME_MEASUREMENT
+    auto start = get_current_time_fenced();
+#endif
 
     const int n_rows = my_blurred_gray.rows;
     const int n_cols = my_blurred_gray.cols;
@@ -239,12 +252,17 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
     for (auto &future : futures_responses) {
         future.get();
     }
-    cv::imshow("Jx", Jx);
-    cv::imshow("Jy", Jy);
-    cv::imshow("Jxy", Jxy);
-
-    cv::waitKey(0);
-    cv::destroyAllWindows();
+    // cv::imshow("Jx", Jx);
+    // cv::imshow("Jy", Jy);
+    // cv::imshow("Jxy", Jxy);
+#ifdef INTERMEDIATE_TIME_MEASUREMENT
+    auto end = get_current_time_fenced();
+    std::cout << "Threadpool gradient calculations: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+              << " ms" << std::endl;
+#endif
+    // draw_score_distribution(R_array, "Parallel");
+    // cv::waitKey(0);
+    // cv::destroyAllWindows();
 
     auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 1500);
 

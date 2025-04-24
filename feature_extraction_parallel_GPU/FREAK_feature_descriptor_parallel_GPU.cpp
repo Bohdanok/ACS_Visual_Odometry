@@ -2,7 +2,7 @@
 // Created by julfy1 on 3/24/25.
 //
 
-#include "FREAK_feature_descriptor_parallel.h"
+#include "FREAK_feature_descriptor_parallel_GPU.h"
 #include <iostream>
 
 double FREAK_Parallel::compute_orientation(const cv::KeyPoint &point, const cv::Mat& image) {

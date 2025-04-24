@@ -18,7 +18,7 @@
 #endif
 
 
-#define VISUALIZATION
+// #define VISUALIZATION
 
 constexpr int BINARY_DESCRIPTOR_SIZE = 32;
 constexpr double MATCH_THRESHOLD = 0.5;
