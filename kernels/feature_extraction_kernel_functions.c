@@ -1,7 +1,7 @@
 __kernel void gradient_convolution(__global uchar* image_data,
-                                   __global double* Jx,
-                                   __global double* Jy,
-                                   __global double* Jxy,
+                                   __global float* Jx,
+                                   __global float* Jy,
+                                   __global float* Jxy,
                                    const int width) {
 
     size_t i = get_global_id(1);
@@ -14,8 +14,8 @@ __kernel void gradient_convolution(__global uchar* image_data,
     // Jx[idx] = 69.0;  colorImage.at<cv::Vec3b>(i, j) = cv::Vec3b(blue, green, red);
 
 
-    double sumx[3] = {0};
-    double sumy[3] = {0};
+    float sumx[3] = {0};
+    float sumy[3] = {0};
 
     // ptr_src1 = image_data.ptr<uchar>(idx - 1);
     // ptr_src2 = image_data.ptr<uchar>(idx);
@@ -23,8 +23,8 @@ __kernel void gradient_convolution(__global uchar* image_data,
 
 
     for (short k = -1; k <= 1; k++) {
-        sumx[k + 1] = (double)(image_data[idx_m1 + k]) - (double)(image_data[idx_p1 + k]); // // [1, 0, -1] T
-        sumy[k + 1] = (double)(image_data[idx_m1 + k]) + 2.0 * (double)(image_data[idx + k]) + (double)(image_data[idx_p1 + k]); // [1, 2, 1] T
+        sumx[k + 1] = (float)(image_data[idx_m1 + k]) - (float)(image_data[idx_p1 + k]); // // [1, 0, -1] T
+        sumy[k + 1] = (float)(image_data[idx_m1 + k]) + 2.0 * (float)(image_data[idx + k]) + (float)(image_data[idx_p1 + k]); // [1, 2, 1] T
 
     }
 
@@ -35,16 +35,16 @@ __kernel void gradient_convolution(__global uchar* image_data,
 }
 
 
-__kernel void shitomasi_response(__global double* R_renponse,
-                                 __global const double* Jx,
-                                 __global const double* Jy,
-                                 __global const double* Jxy,
+__kernel void shitomasi_response(__global float* R_renponse,
+                                 __global const float* Jx,
+                                 __global const float* Jy,
+                                 __global const float* Jxy,
                                  const int width,
-                                 const double RESPONSE_THRESHOLD) {
+                                 const float RESPONSE_THRESHOLD) {
 
-    double jx2 = 0;
-    double jy2 = 0;
-    double sumjxy = 0;
+    float jx2 = 0;
+    float jy2 = 0;
+    float sumjxy = 0;
     size_t i = get_global_id(1);
     size_t j = get_global_id(0);
 
@@ -54,9 +54,9 @@ __kernel void shitomasi_response(__global double* R_renponse,
     for (int m = -2; m <= 2; m++) {
         for (int n = -2; n <= 2; n++) {
             const size_t neighbor_idx = (i + m) * width + (j + n);
-            const double jx = Jx[neighbor_idx];
-            const double jy = Jy[neighbor_idx];
-            const double jxy = Jxy[neighbor_idx];
+            const float jx = Jx[neighbor_idx];
+            const float jy = Jy[neighbor_idx];
+            const float jxy = Jxy[neighbor_idx];
 
             sumjxy += jxy;
             jx2 += jx * jx;
@@ -64,12 +64,13 @@ __kernel void shitomasi_response(__global double* R_renponse,
         }
     }
 
-    const double det = (jx2 * jy2) - (sumjxy * sumjxy);
-    const double trace = jx2 + jy2;
-    const double R = (trace / 2) - (0.5 * sqrt(trace * trace - 4 * det));
+    const float det = (jx2 * jy2) - (sumjxy * sumjxy);
+    const float trace = jx2 + jy2;
+    const float R = (trace / 2) - (0.5 * sqrt(trace * trace - 4 * det));
 
     R_renponse[idx] = R > RESPONSE_THRESHOLD ? R : 0;
-//    R_renponse[idx] = 50000;
+//    R_renponse[idx] = 1000.0f * sin((float)(i + j) / 10.0f);
+//	R_renponse[idx] = R;
     // R_array[i][j] = R;
     // max_R = std::max(R, max_R);
 

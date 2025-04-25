@@ -41,7 +41,7 @@ struct GPU_settings {
 
 
 bool is_number(const std::string& s);
-void draw_score_distribution(const std::vector<std::vector<double>>& R_values, const std::string& win_name);
+void draw_score_distribution(const std::vector<std::vector<float>>& R_values, const std::string& win_name);
 void print_descriptor(const std::vector<std::vector<uint8_t>>& descriptor);
 
 

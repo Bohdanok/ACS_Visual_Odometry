@@ -30,7 +30,7 @@ cv::Mat CornerDetectionParallel_GPU::custom_bgr2gray(cv::Mat& picture) {
 
 }
 
-void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings& gpu_settings, const cv::Mat& my_blurred_gray, std::vector<std::vector<double>>& R_score) {
+void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings& gpu_settings, const cv::Mat& my_blurred_gray, std::vector<std::vector<float>>& R_score) {
 
     const int n_rows = my_blurred_gray.rows;
     const int n_cols = my_blurred_gray.cols;
@@ -44,9 +44,9 @@ void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings&
 
     const cl::Buffer image_buffer(gpu_settings.context, CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, n_cols * n_rows * sizeof(uchar), my_blurred_gray.data);
 
-    const cl::Buffer Jx_buffer(gpu_settings.context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, n_cols * n_rows * sizeof(double));
-    const cl::Buffer Jy_buffer(gpu_settings.context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, n_cols * n_rows * sizeof(double));
-    const cl::Buffer Jxy_buffer(gpu_settings.context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, n_cols * n_rows * sizeof(double));
+    const cl::Buffer Jx_buffer(gpu_settings.context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, n_cols * n_rows * sizeof(float));
+    const cl::Buffer Jy_buffer(gpu_settings.context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, n_cols * n_rows * sizeof(float));
+    const cl::Buffer Jxy_buffer(gpu_settings.context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, n_cols * n_rows * sizeof(float));
 #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
     const auto end_buffer_write = get_current_time_fenced();
     // buffer_write_time += std::chrono::duration_cast<std::chrono::milliseconds>(start_buffer_write - end_buffer_write).count();
@@ -82,7 +82,7 @@ void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings&
 
     cl::Kernel kernel_shitomasi_response(gpu_settings.program, "shitomasi_response");
 
-    cl::Buffer R_response_buffer(gpu_settings.context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, n_cols * n_rows * sizeof(double));
+    cl::Buffer R_response_buffer(gpu_settings.context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, n_cols * n_rows * sizeof(float));
 
 
     kernel_shitomasi_response.setArg(0, R_response_buffer);
@@ -108,12 +108,12 @@ void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings&
               << " ms" << std::endl;
 #endif
 
-    std::vector<double> flat_R_array(n_rows * n_cols);
+    std::vector<float> flat_R_array(n_rows * n_cols);
 #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
     const auto start_buffer_read = get_current_time_fenced();
 #endif
 
-    command_queue.enqueueReadBuffer(R_response_buffer, CL_TRUE, 0, sizeof(double) * flat_R_array.size(), flat_R_array.data());
+    command_queue.enqueueReadBuffer(R_response_buffer, CL_TRUE, 0, sizeof(float) * flat_R_array.size(), flat_R_array.data());
 
 
 #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
@@ -122,7 +122,7 @@ void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings&
               << " ms" << std::endl;
 #endif
 
-    // std::vector<std::vector<double>> R_array(n_rows, std::vector<double>(n_cols));
+    // std::vector<std::vector<float>> R_array(n_rows, std::vector<float>(n_cols));
 #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
     const auto crutch_start = get_current_time_fenced();
 #endif
@@ -144,8 +144,8 @@ void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings&
 
 
 
-std::vector<cv::KeyPoint> CornerDetectionParallel_GPU::non_maximum_suppression(const std::vector<std::vector<double>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
-    std::priority_queue<std::tuple<double, int, int>> max_heap; // Store (R_value, i, j)
+std::vector<cv::KeyPoint> CornerDetectionParallel_GPU::non_maximum_suppression(const std::vector<std::vector<float>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
+    std::priority_queue<std::tuple<float, int, int>> max_heap; // Store (R_value, i, j)
     std::vector<cv::KeyPoint> output_corners;
     output_corners.reserve(N);
     int count = 0;
@@ -159,7 +159,7 @@ std::vector<cv::KeyPoint> CornerDetectionParallel_GPU::non_maximum_suppression(c
                 continue;
             }
 
-            double center_val = R_values[i][j];
+            float center_val = R_values[i][j];
             bool is_local_max = true;
 
             for (int n = i - k / 2; n <= i + k / 2; n++) {

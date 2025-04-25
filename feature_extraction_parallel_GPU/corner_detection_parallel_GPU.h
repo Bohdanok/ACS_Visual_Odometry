@@ -20,7 +20,7 @@ get_current_time_fenced()
     return res_time;
 }
 
-constexpr double RESPONSE_THRESHOLD = 25000;
+constexpr float RESPONSE_THRESHOLD = 25000;
 
 struct GPU_settings {
     cl::Program program;
@@ -37,8 +37,8 @@ public:
     static cv::Mat custom_bgr2gray(cv::Mat& picture);
     // static std::vector<cv::KeyPoint> non_maximum_suppression_worker(const std::vector<std::vector<double>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N);
 
-    static void shitomasi_corner_detection(const GPU_settings& gpu_settings, const cv::Mat& my_blurred_gray, std::vector<std::vector<double>>& R_score);
-    static std::vector<cv::KeyPoint> non_maximum_suppression(const std::vector<std::vector<double>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N);
+    static void shitomasi_corner_detection(const GPU_settings& gpu_settings, const cv::Mat& my_blurred_gray, std::vector<std::vector<float>>& R_score);
+    static std::vector<cv::KeyPoint> non_maximum_suppression(const std::vector<std::vector<float>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N);
 
 
 };
