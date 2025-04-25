@@ -96,7 +96,7 @@ void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings&
     const cl::NDRange global_offset_response(2, 2);
     const cl::NDRange global_size_response(n_cols - 4, n_rows - 4);
 
-    command_queue.enqueueNDRangeKernel(kernel_shitomasi_response, global_offset_response, global_size_response);
+    auto err = command_queue.enqueueNDRangeKernel(kernel_shitomasi_response, global_offset_response, global_size_response);
 
     command_queue.finish();
 
@@ -107,10 +107,6 @@ void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings&
     std::cout << "GPU kernel function calculations: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_kernel_functions - end_buffer_write).count()
               << " ms" << std::endl;
 #endif
-
-    // std::vector<std::vector<double>> R_array(n_rows, std::vector<double>(n_cols, 0));
-    //
-    // command_queue.enqueueReadBuffer(R_response_buffer, CL_TRUE, 0, sizeof(double) * n_rows * n_cols, R_array.data());
 
     std::vector<double> flat_R_array(n_rows * n_cols);
 #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK

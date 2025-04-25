@@ -112,7 +112,7 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(const cv::Mat& imag
     const int n_rows = my_blurred_gray.rows;
     const int n_cols = my_blurred_gray.cols;
 
-    std::vector<std::vector<double>> R_score(n_rows, std::vector<double>(n_cols));
+    std::vector<std::vector<double>> R_score(n_rows, std::vector<double>(n_cols, 25000));
 
 #ifdef INTERMEDIATE_TIME_MEASUREMENTS
     const auto start = get_current_time_fenced();
@@ -125,10 +125,11 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(const cv::Mat& imag
     std::cout << "GPU response calculations: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
               << " ms" << std::endl;
 #endif
-    // draw_score_distribution(R_score, "Response");
-    //
-    // cv::waitKey(0);
-    // cv::destroyAllWindows();
+
+    draw_score_distribution(R_score, "Response");
+
+    cv::waitKey(0);
+    cv::destroyAllWindows();
 
     auto local_mins_shitomasi = CornerDetectionParallel_GPU::non_maximum_suppression(R_score, n_rows, n_cols, 5, 1500);
 

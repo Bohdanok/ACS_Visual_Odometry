@@ -2,7 +2,9 @@
 // Created by julfy on 24.04.25.
 //
 
-#include <CL/opencl.hpp>
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_HPP_TARGET_OPENCL_VERSION 200  // or 120 if you're targeting 1.2
+#include <CL/cl2.hpp>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -117,10 +119,18 @@ int main() {
 
     cl::Context context(chosenDevice);
     cl::Program program(context, sources);
-    if (program.build({chosenDevice}) != CL_SUCCESS) {
-        std::cerr << "Error building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(chosenDevice) << "\n";
+    try {
+        program.build({chosenDevice}, "-cl-std=CL1.2");
+    } catch (const cl::Error& err) {
+        std::cerr << "OpenCL Build Error: " << err.what() << " (" << err.err() << ")\n";
+        for (const auto& d : devices) {
+            std::string buildLog = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(d);
+            std::cerr << "Build Log for device " << d.getInfo<CL_DEVICE_NAME>() << ":\n";
+            std::cerr << buildLog << "\n";
+        }
         return 1;
     }
+
 
     // Get binary sizes
     std::vector<size_t> binary_sizes = program.getInfo<CL_PROGRAM_BINARY_SIZES>();

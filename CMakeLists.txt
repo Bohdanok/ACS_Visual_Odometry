@@ -101,5 +101,6 @@ add_custom_target(run_precompile_kernel
         COMMENT "Running ${PRECOMPILE_THE_SOURCE} to generate kernel binary"
 )
 
-add_dependencies(${BOHDAN_TEST} run_precompile_kernel)
+add_dependencies(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} run_precompile_kernel)
 
+add_dependencies(${BOHDAN_TEST} run_precompile_kernel)
