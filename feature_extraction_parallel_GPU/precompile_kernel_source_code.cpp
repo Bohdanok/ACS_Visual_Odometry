@@ -23,24 +23,6 @@ int main() {
     // Get platform and device
     std::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
-    // if (platforms.empty()) {
-    //     std::cerr << "No OpenCL platforms found.\n";
-    //     return 1;
-    // }
-    //
-    // std::vector<cl::Device> devices;
-    // platforms[0].getDevices(CL_DEVICE_TYPE_GPU, &devices);
-    // if (devices.empty()) {
-    //     std::cerr << "No OpenCL GPU devices found.\n";
-    //     return 1;
-    // }
-    //
-    // cl::Context context(devices[0]);
-    // cl::Program program(context, sources);
-    // if (program.build({devices[0]}) != CL_SUCCESS) {
-    //     std::cerr << "Error building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0]) << "\n";
-    //     return 1;
-    // }
 
     if (platforms.empty()) {
         std::cerr << "No OpenCL platforms found.\n";
@@ -54,6 +36,64 @@ int main() {
         std::cout << "  [" << i << "] " << platformName << "\n";
     }
 
+
+    std::cout << "Number of OpenCL platforms: " << platforms.size() << "\n";
+
+    for (size_t i = 0; i < platforms.size(); ++i) {
+        std::string platformName, platformVendor, platformVersion;
+        platforms[i].getInfo(CL_PLATFORM_NAME, &platformName);
+        platforms[i].getInfo(CL_PLATFORM_VENDOR, &platformVendor);
+        platforms[i].getInfo(CL_PLATFORM_VERSION, &platformVersion);
+
+        std::cout << "\nPlatform [" << i << "]:\n";
+        std::cout << "  Name    : " << platformName << "\n";
+        std::cout << "  Vendor  : " << platformVendor << "\n";
+        std::cout << "  Version : " << platformVersion << "\n";
+
+        std::vector<cl::Device> devices;
+        platforms[i].getDevices(CL_DEVICE_TYPE_ALL, &devices);
+        std::cout << "  Number of devices: " << devices.size() << "\n";
+
+        for (size_t j = 0; j < devices.size(); ++j) {
+            std::string deviceName, deviceVendor, deviceVersion;
+            cl_device_type deviceType;
+            cl_uint computeUnits;
+            cl_ulong globalMemSize, localMemSize;
+            size_t maxWorkGroupSize;
+            std::vector<size_t> maxWorkItemSizes;
+
+            devices[j].getInfo(CL_DEVICE_NAME, &deviceName);
+            devices[j].getInfo(CL_DEVICE_VENDOR, &deviceVendor);
+            devices[j].getInfo(CL_DEVICE_VERSION, &deviceVersion);
+            devices[j].getInfo(CL_DEVICE_TYPE, &deviceType);
+            devices[j].getInfo(CL_DEVICE_MAX_COMPUTE_UNITS, &computeUnits);
+            devices[j].getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &globalMemSize);
+            devices[j].getInfo(CL_DEVICE_LOCAL_MEM_SIZE, &localMemSize);
+            devices[j].getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &maxWorkGroupSize);
+            devices[j].getInfo(CL_DEVICE_MAX_WORK_ITEM_SIZES, &maxWorkItemSizes);
+
+            std::cout << "  Device [" << j << "]:\n";
+            std::cout << "    Name         : " << deviceName << "\n";
+            std::cout << "    Vendor       : " << deviceVendor << "\n";
+            std::cout << "    Version      : " << deviceVersion << "\n";
+            std::cout << "    Type         : "
+                      << ((deviceType & CL_DEVICE_TYPE_CPU) ? "CPU " : "")
+                      << ((deviceType & CL_DEVICE_TYPE_GPU) ? "GPU " : "")
+                      << ((deviceType & CL_DEVICE_TYPE_ACCELERATOR) ? "Accelerator " : "")
+                      << "\n";
+            std::cout << "    Compute Units: " << computeUnits << "\n";
+            std::cout << "    Global Memory: " << globalMemSize / (1024 * 1024) << " MB\n";
+            std::cout << "    Local Memory : " << localMemSize / 1024 << " KB\n";
+            std::cout << "    Max Work Group Size: " << maxWorkGroupSize << "\n";
+            std::cout << "    Max Work Item Sizes: ";
+            for (size_t k = 0; k < maxWorkItemSizes.size(); ++k) {
+                std::cout << maxWorkItemSizes[k];
+                if (k < maxWorkItemSizes.size() - 1) std::cout << " x ";
+            }
+            std::cout << "\n";
+        }
+    }
+
     std::vector<cl::Device> devices;
     platforms[0].getDevices(CL_DEVICE_TYPE_GPU, &devices);
 
@@ -62,7 +102,7 @@ int main() {
         return 1;
     }
 
-    std::cout << "\nAvailable GPU Devices on Platform 0:\n";
+    std::cout << "\nAvailable GPU Devices on the chosen Platform:\n";
     for (size_t i = 0; i < devices.size(); ++i) {
         std::string deviceName;
         devices[i].getInfo(CL_DEVICE_NAME, &deviceName);

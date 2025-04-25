@@ -9,7 +9,7 @@
 
 #define VISUALIZATION
 #define INTERMEDIATE_TIME_MEASUREMENTS
-
+// #define INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
 
 
 void draw_score_distribution(const std::vector<std::vector<double>>& R_values, const std::string& win_name) {

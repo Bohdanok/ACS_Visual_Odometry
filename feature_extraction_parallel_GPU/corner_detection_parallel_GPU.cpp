@@ -9,7 +9,10 @@
 #include <opencv2/highgui.hpp>
 #include <string>
 #include <cmath>
+#include <iostream>
 #include <queue>
+
+// #define INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
 
 cv::Mat CornerDetectionParallel_GPU::custom_bgr2gray(cv::Mat& picture) {
     const int n_rows = picture.rows;
@@ -31,12 +34,25 @@ void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings&
 
     const int n_rows = my_blurred_gray.rows;
     const int n_cols = my_blurred_gray.cols;
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+    // long long buffer_write_time = 0;
+    // const auto end = get_current_time_fenced();
+    // std::cout << "GPU response calculations: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+    //           << " ms" << std::endl;
+    const auto start_buffer_write = get_current_time_fenced();
+#endif
 
     const cl::Buffer image_buffer(gpu_settings.context, CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, n_cols * n_rows * sizeof(uchar), my_blurred_gray.data);
 
     const cl::Buffer Jx_buffer(gpu_settings.context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, n_cols * n_rows * sizeof(double));
     const cl::Buffer Jy_buffer(gpu_settings.context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, n_cols * n_rows * sizeof(double));
     const cl::Buffer Jxy_buffer(gpu_settings.context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, n_cols * n_rows * sizeof(double));
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+    const auto end_buffer_write = get_current_time_fenced();
+    // buffer_write_time += std::chrono::duration_cast<std::chrono::milliseconds>(start_buffer_write - end_buffer_write).count();
+    std::cout << "Buffer write time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_buffer_write - start_buffer_write).count()
+              << " ms" << std::endl;
+#endif
 
 
     cl::Kernel kernel_gradient(gpu_settings.program, "gradient_convolution");
@@ -79,20 +95,43 @@ void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings&
 
     command_queue.finish();
 
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+    const auto end_kernel_functions = get_current_time_fenced();
+    std::cout << "GPU kernel function calculations: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_kernel_functions - end_buffer_write).count()
+              << " ms" << std::endl;
+#endif
+
     // std::vector<std::vector<double>> R_array(n_rows, std::vector<double>(n_cols, 0));
     //
     // command_queue.enqueueReadBuffer(R_response_buffer, CL_TRUE, 0, sizeof(double) * n_rows * n_cols, R_array.data());
 
     std::vector<double> flat_R_array(n_rows * n_cols);
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+    const auto start_buffer_read = get_current_time_fenced();
+#endif
 
     command_queue.enqueueReadBuffer(R_response_buffer, CL_TRUE, 0, sizeof(double) * flat_R_array.size(), flat_R_array.data());
 
+
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+    const auto end_buffer_read = get_current_time_fenced();
+    std::cout << "Buffer read time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_buffer_read - start_buffer_read).count()
+              << " ms" << std::endl;
+#endif
+
     // std::vector<std::vector<double>> R_array(n_rows, std::vector<double>(n_cols));
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+    const auto crutch_start = get_current_time_fenced();
+#endif
     for (int i = 0; i < n_rows; ++i)
         for (int j = 0; j < n_cols; ++j)
             R_score[i][j] = flat_R_array[i * n_cols + j];
 
-
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+    const auto crutch_end = get_current_time_fenced();
+    std::cout << "Crutch time: " << std::chrono::duration_cast<std::chrono::milliseconds>(crutch_end - crutch_start).count()
+              << " ms" << std::endl;
+#endif
     // auto end = get_current_time_fenced();
     // std::cout << "GPU gradient calculations: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
     //           << " ms" << std::endl;
