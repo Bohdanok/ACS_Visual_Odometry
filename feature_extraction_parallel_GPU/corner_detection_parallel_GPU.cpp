@@ -12,7 +12,7 @@
 #include <iostream>
 #include <queue>
 
-// #define INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+#define INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
 
 cv::Mat CornerDetectionParallel_GPU::custom_bgr2gray(cv::Mat& picture) {
     const int n_rows = picture.rows;
@@ -72,7 +72,12 @@ void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings&
     command_queue.enqueueNDRangeKernel(kernel_gradient, global_offset_gradient, global_size_gradient);
 
     command_queue.finish();
-
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+    const auto end_convolution_function = get_current_time_fenced();
+    // buffer_write_time += std::chrono::duration_cast<std::chrono::milliseconds>(start_buffer_write - end_buffer_write).count();
+    std::cout << "GPU kernel convolution function time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_convolution_function - end_buffer_write).count()
+              << " ms" << std::endl;
+#endif
     // R score
 
     cl::Kernel kernel_shitomasi_response(gpu_settings.program, "shitomasi_response");
@@ -97,6 +102,8 @@ void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings&
 
 #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
     const auto end_kernel_functions = get_current_time_fenced();
+    std::cout << "GPU shi-tomasi kernel corner detection calculations: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_kernel_functions - end_convolution_function).count()
+              << " ms" << std::endl;
     std::cout << "GPU kernel function calculations: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_kernel_functions - end_buffer_write).count()
               << " ms" << std::endl;
 #endif
