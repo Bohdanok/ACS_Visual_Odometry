@@ -8,7 +8,7 @@
 #include <vector>
 
 int main() {
-    const std::string filename = "/home/julfy/Documents/ACS/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.c";
+    const std::string filename = "../kernels/feature_extraction_kernel_functions.c";
 
     // Load kernel source
     std::ifstream opened_file(filename);
@@ -23,22 +23,62 @@ int main() {
     // Get platform and device
     std::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
+    // if (platforms.empty()) {
+    //     std::cerr << "No OpenCL platforms found.\n";
+    //     return 1;
+    // }
+    //
+    // std::vector<cl::Device> devices;
+    // platforms[0].getDevices(CL_DEVICE_TYPE_GPU, &devices);
+    // if (devices.empty()) {
+    //     std::cerr << "No OpenCL GPU devices found.\n";
+    //     return 1;
+    // }
+    //
+    // cl::Context context(devices[0]);
+    // cl::Program program(context, sources);
+    // if (program.build({devices[0]}) != CL_SUCCESS) {
+    //     std::cerr << "Error building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0]) << "\n";
+    //     return 1;
+    // }
+
     if (platforms.empty()) {
         std::cerr << "No OpenCL platforms found.\n";
         return 1;
     }
 
+    std::cout << "Available OpenCL Platforms:\n";
+    for (size_t i = 0; i < platforms.size(); ++i) {
+        std::string platformName;
+        platforms[i].getInfo(CL_PLATFORM_NAME, &platformName);
+        std::cout << "  [" << i << "] " << platformName << "\n";
+    }
+
     std::vector<cl::Device> devices;
     platforms[0].getDevices(CL_DEVICE_TYPE_GPU, &devices);
+
     if (devices.empty()) {
         std::cerr << "No OpenCL GPU devices found.\n";
         return 1;
     }
 
-    cl::Context context(devices[0]);
+    std::cout << "\nAvailable GPU Devices on Platform 0:\n";
+    for (size_t i = 0; i < devices.size(); ++i) {
+        std::string deviceName;
+        devices[i].getInfo(CL_DEVICE_NAME, &deviceName);
+        std::cout << "  [" << i << "] " << deviceName << "\n";
+    }
+
+    cl::Device chosenDevice = devices[0];
+    std::string chosenName;
+    chosenDevice.getInfo(CL_DEVICE_NAME, &chosenName);
+
+    std::cout << "\nChosen device: " << chosenName << "\n";
+
+    cl::Context context(chosenDevice);
     cl::Program program(context, sources);
-    if (program.build({devices[0]}) != CL_SUCCESS) {
-        std::cerr << "Error building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0]) << "\n";
+    if (program.build({chosenDevice}) != CL_SUCCESS) {
+        std::cerr << "Error building: " << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(chosenDevice) << "\n";
         return 1;
     }
 

@@ -149,9 +149,10 @@ int main(int argc, char** argv) {
     const std::string image_filename = argv[1]; // "/home/julfy/Documents/ACS/ACS_Visual_Odometry/images/Zhovkva2.jpg";
                                         //  "/home/julfy/Documents/ACS/ACS_Visual_Odometry/test_images/notrd1.jpg"
 
+    const std::string kernel_path = argv[2];
     cv::Mat image = cv::imread(image_filename, cv::IMREAD_GRAYSCALE);
 
-    const std::string kernel_path = "/home/julfy/Documents/ACS/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.bin"; // argv?
+    // const std::string kernel_path = "/home/julfy/Documents/ACS/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.bin"; // argv?
 
     feature_extraction_manager(image, kernel_path);
 
