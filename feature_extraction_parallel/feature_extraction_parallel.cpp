@@ -23,46 +23,53 @@ void print_interval(const interval& interval) {
     std::cout << "Start: (" << interval.cols.start << ", " << interval.rows.start << ")\tEnd: (" << interval.cols.end << ", " << interval.rows.end << ")" << std::endl;
 }
 
-void draw_score_distribution(const std::vector<std::vector<double>>& R_values, const std::string& win_name) {
+
+void draw_score_distribution(const std::vector<std::vector<float>>& R_values, const std::string& win_name) {
 
     int rows = R_values.size();
     int cols = R_values[0].size();
 
-    cv::Mat mat(rows, cols, CV_64F); // Create matrix to store values
+    cv::Mat mat(rows, cols, CV_32F); // Create matrix to store values
 
     // Copy values
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
-            mat.at<double>(i, j) = R_values[i][j];
+            mat.at<float>(i, j) = R_values[i][j];
         }
     }
 
     // Normalize values to range [0, 1]
-    double minVal, maxVal;
-    cv::minMaxLoc(mat, &minVal, &maxVal);
-    cv::Mat normMat = (mat - minVal) / (maxVal - minVal); // Normalize between 0-1
+    float minVal, maxVal;
+    cv::minMaxLoc(mat, reinterpret_cast<double*>(&minVal), reinterpret_cast<double*>(&maxVal));
+    std::cout << "Min R: " << minVal << ", Max R: " << maxVal << std::endl;
+
+    // cv::Mat normMat = (mat - minVal) / (maxVal - minVal); // Normalize between 0-1
+
+    float visMax = 300000; // Experiment with this
+    cv::Mat normMat = mat / visMax;
+    cv::threshold(normMat, normMat, 1.0, 1.0, cv::THRESH_TRUNC);
 
     // Create color image
     cv::Mat colorImage(rows, cols, CV_8UC3);
 
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
-            double val = normMat.at<double>(i, j); // Normalized value [0, 1]
+            float val = normMat.at<float>(i, j); // Normalized value [0, 1]
 
             // Map to RGB colors (Green → Blue → Red)
-            uchar red   = static_cast<uchar>(255 * std::max(0.0, (val - 0.5) * 2));  // Increase red for higher values
-            uchar blue  = static_cast<uchar>(255 * std::max(0.0, (0.5 - std::abs(val - 0.5)) * 2));  // Max in the middle
-            uchar green = static_cast<uchar>(255 * std::max(0.0, (0.5 - val) * 2));  // Decrease green as value increases
+            uchar red   = static_cast<uchar>(255 * std::max(0.f, (val - 0.5f) * 2));
+            uchar blue  = static_cast<uchar>(255 * std::max(0.f, (0.5f - std::abs(val - 0.5f)) * 2));
+            uchar green = static_cast<uchar>(255 * std::max(0.f, (0.5f - val) * 2));
 
             colorImage.at<cv::Vec3b>(i, j) = cv::Vec3b(blue, green, red);
         }
     }
+
     cv::imshow(win_name, colorImage);
     // cv::imwrite("../test_images/output_images/" + win_name + ".png", colorImage);
-
 }
 
-void response_worker(const cv::Mat& blurred_gray, const interval& interval, cv::Mat& Jx, cv::Mat& Jy, cv::Mat& Jxy, std::vector<std::vector<double>>& R_array) {
+void response_worker(const cv::Mat& blurred_gray, const interval& interval, cv::Mat& Jx, cv::Mat& Jy, cv::Mat& Jxy, std::vector<std::vector<float>>& R_array) {
 
     CornerDetectionParallel::direction_gradients_worker(blurred_gray, interval, Jx, Jy, Jxy);
 
@@ -83,11 +90,11 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(cv::Mat& image, thr
     const int n_rows = my_blurred_gray.rows;
     const int n_cols = my_blurred_gray.cols;
     // rows 400 cols 900
-    cv::Mat Jx = cv::Mat::zeros(n_rows, n_cols, CV_64F);
-    cv::Mat Jy = cv::Mat::zeros(n_rows, n_cols, CV_64F);
-    cv::Mat Jxy = cv::Mat::zeros(n_rows, n_cols, CV_64F);
+    cv::Mat Jx = cv::Mat::zeros(n_rows, n_cols, CV_32F);
+    cv::Mat Jy = cv::Mat::zeros(n_rows, n_cols, CV_32F);
+    cv::Mat Jxy = cv::Mat::zeros(n_rows, n_cols, CV_32F);
 
-    std::vector<std::vector<double>> R_array(n_rows, std::vector<double>(n_cols, 0));
+    std::vector<std::vector<float>> R_array(n_rows, std::vector<float>(n_cols, 0));
 
 
     std::vector<std::future<void>> futures_responses;
@@ -221,11 +228,11 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
     const int n_rows = my_blurred_gray.rows;
     const int n_cols = my_blurred_gray.cols;
     // rows 400 cols 900
-    cv::Mat Jx = cv::Mat::zeros(n_rows, n_cols, CV_64F);
-    cv::Mat Jy = cv::Mat::zeros(n_rows, n_cols, CV_64F);
-    cv::Mat Jxy = cv::Mat::zeros(n_rows, n_cols, CV_64F);
+    cv::Mat Jx = cv::Mat::zeros(n_rows, n_cols, CV_32F);
+    cv::Mat Jy = cv::Mat::zeros(n_rows, n_cols, CV_32F);
+    cv::Mat Jxy = cv::Mat::zeros(n_rows, n_cols, CV_32F);
 
-    std::vector<std::vector<double>> R_array(n_rows, std::vector<double>(n_cols, 0));
+    std::vector<std::vector<float>> R_array(n_rows, std::vector<float>(n_cols, 0));
 
 
     std::vector<std::future<void>> futures_responses;

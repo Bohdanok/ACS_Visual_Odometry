@@ -99,7 +99,7 @@ constexpr size_t DESCRIPTOR_SIZE = PATCH_DESCRIPTION_POINTS.size();
 
 class FREAK_Parallel {
 public:
-    static double compute_orientation(const cv::KeyPoint &point, const cv::Mat& image);
+    static float compute_orientation(const cv::KeyPoint &point, const cv::Mat& image);
     static void FREAK_feature_description(const std::vector<cv::KeyPoint>& key_points, const cv::Mat blurred_gray_picture, const size_t& starting_key_point_index, std::vector<std::vector<uint8_t>>& descriptor);
     static void FREAK_feature_description_worker(const std::vector<cv::KeyPoint>& key_points, const cv::Mat& blurred_gray_picture, const size_t& starting_key_point_index, std::vector<std::vector<uint8_t>>& descriptor, const size_t& num_of_keypoints, const size_t& KEYPOINTS_PER_TASK = KEY_POINTS_PER_TASK);
 

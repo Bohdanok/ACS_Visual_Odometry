@@ -5,17 +5,17 @@
 #include "FREAK_feature_descriptor_parallel.h"
 #include <iostream>
 
-double FREAK_Parallel::compute_orientation(const cv::KeyPoint &point, const cv::Mat& image) {
+float FREAK_Parallel::compute_orientation(const cv::KeyPoint &point, const cv::Mat& image) {
 
-    double O_x = 0;
-    double O_y = 0;
+    float O_x = 0;
+    float O_y = 0;
 
     for (int i = 0; i < predefined_point_for_matching.size(); i++) {
-        const auto point1_intensity = static_cast<double>(image.at<uchar>(predefined_point_for_matching[i].y + point.pt.y, predefined_point_for_matching[i].x + point.pt.x));
+        const auto point1_intensity = static_cast<float>(image.at<uchar>(predefined_point_for_matching[i].y + point.pt.y, predefined_point_for_matching[i].x + point.pt.x));
         for (int j = i + 1; j < predefined_point_for_matching.size(); j++) {
-            const double intensity_change = point1_intensity - static_cast<double>(image.at<uchar>(predefined_point_for_matching[j].y + point.pt.y, predefined_point_for_matching[j].x + point.pt.x));
+            const float intensity_change = point1_intensity - static_cast<float>(image.at<uchar>(predefined_point_for_matching[j].y + point.pt.y, predefined_point_for_matching[j].x + point.pt.x));
             // norm of 2 vectors
-            const double norm = sqrt(std::pow(predefined_point_for_matching[i].y + point.pt.y - predefined_point_for_matching[j].y + point.pt.y, 2) +
+            const float norm = sqrt(std::pow(predefined_point_for_matching[i].y + point.pt.y - predefined_point_for_matching[j].y + point.pt.y, 2) +
                 std::pow(predefined_point_for_matching[i].x + point.pt.x - predefined_point_for_matching[j].x + point.pt.x, 2));
             O_x += intensity_change * (predefined_point_for_matching[i].x - predefined_point_for_matching[j].x) / norm;
             O_y += intensity_change * (predefined_point_for_matching[i].y - predefined_point_for_matching[j].y) / norm;
@@ -39,8 +39,8 @@ void FREAK_Parallel::FREAK_feature_description(const std::vector<cv::KeyPoint>& 
 
         const auto key_point = key_points[i];
 
-        const double angle = compute_orientation(key_point , blurred_gray_picture);
-        const double rotation_matrix[4] = {std::cos(angle), -1 * std::sin(angle), std::sin(angle), std::cos(angle)};
+        const float angle = compute_orientation(key_point , blurred_gray_picture);
+        const float rotation_matrix[4] = {std::cos(angle), -1 * std::sin(angle), std::sin(angle), std::cos(angle)};
 
         for (size_t j = 0; j < DESCRIPTOR_SIZE; j++) {
             // std::cout << "Key point: " << "(" << key_point.x << ", " << key_point.y << ")" << std::endl;
@@ -81,8 +81,8 @@ void FREAK_Parallel::FREAK_feature_description_worker(const std::vector<cv::KeyP
 
         const auto key_point = key_points[i];
 
-        const double angle = compute_orientation(key_point , blurred_gray_picture);
-        const double rotation_matrix[4] = {std::cos(angle), -1 * std::sin(angle), std::sin(angle), std::cos(angle)};
+        const float angle = compute_orientation(key_point , blurred_gray_picture);
+        const float rotation_matrix[4] = {std::cos(angle), -1 * std::sin(angle), std::sin(angle), std::cos(angle)};
 
         for (size_t j = 0; j < DESCRIPTOR_SIZE; j++) {
             // std::cout << "Key point: " << "(" << key_point.x << ", " << key_point.y << ")" << std::endl;

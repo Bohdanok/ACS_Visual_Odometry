@@ -28,17 +28,17 @@ cv::Mat CornerDetectionParallel::custom_bgr2gray(cv::Mat& picture) {
 }
 
 void CornerDetectionParallel::direction_gradients_worker(const cv::Mat& picture, const interval& interval, cv::Mat& Jx, cv::Mat& Jy, cv::Mat& Jxy) {
-    double sumx[3] = {0};
-    double sumy[3] = {0};
+    float sumx[3] = {0};
+    float sumy[3] = {0};
 
     for (int i = interval.rows.start + 1; i < interval.rows.end - 1; i++) {
 
         auto *ptr_src1 = picture.ptr<uchar>(i - 1);
         auto *ptr_src2 = picture.ptr<uchar>(i);
         auto *ptr_src3 = picture.ptr<uchar>(i + 1);
-        auto *ptr_dst_Jx = Jx.ptr<double>(i);
-        auto *ptr_dst_Jy = Jy.ptr<double>(i);
-        auto *ptr_dst_Jxy = Jxy.ptr<double>(i);
+        auto *ptr_dst_Jx = Jx.ptr<float>(i);
+        auto *ptr_dst_Jy = Jy.ptr<float>(i);
+        auto *ptr_dst_Jxy = Jxy.ptr<float>(i);
 
         for (int j = interval.cols.start + 1; j < interval.cols.end - 1; j++) {
 
@@ -58,28 +58,28 @@ void CornerDetectionParallel::direction_gradients_worker(const cv::Mat& picture,
 }
 
 
-void CornerDetectionParallel::shitomasi_corner_detection_worker(const cv::Mat& Jx, const cv::Mat& Jy, const cv::Mat& Jxy, const interval& interval, const double& k, std::vector<std::vector<double>>& R_array){
+void CornerDetectionParallel::shitomasi_corner_detection_worker(const cv::Mat& Jx, const cv::Mat& Jy, const cv::Mat& Jxy, const interval& interval, const float& k, std::vector<std::vector<float>>& R_array){
 
-    double jx2, jy2;
-    // double max_R = -99999999.0;
+    float jx2, jy2;
+    // float max_R = -99999999.0;
 
     for (int i = interval.rows.start + 2; i < interval.rows.end - 2; i++) { // if the length of the interval is 1???!?
 
         for (int j = interval.cols.start + 2; j < interval.cols.end - 2; j++) {
 
             // R = det(M)−k⋅(trace(M))**2
-            double sumjxy = 0;
+            float sumjxy = 0;
             jx2 = 0, jy2 = 0;
 
             for (int m = -2; m <= 2; m++) {
-                const auto *ptr_srcjx = Jx.ptr<double>(i + m);
-                const auto *ptr_srcjy = Jy.ptr<double>(i + m);
-                const auto *ptr_srcjxy = Jxy.ptr<double>(i + m);
+                const auto *ptr_srcjx = Jx.ptr<float>(i + m);
+                const auto *ptr_srcjy = Jy.ptr<float>(i + m);
+                const auto *ptr_srcjxy = Jxy.ptr<float>(i + m);
 
                 for (int n = -2; n <= 2; n++) {
-                    const double jx = ptr_srcjx[j + n];
-                    const double jy = ptr_srcjy[j + n];
-                    const double jxy = ptr_srcjxy[j + n];
+                    const float jx = ptr_srcjx[j + n];
+                    const float jy = ptr_srcjy[j + n];
+                    const float jxy = ptr_srcjxy[j + n];
 
                     // sumjx += jx;
                     // sumjy += jy;
@@ -90,10 +90,10 @@ void CornerDetectionParallel::shitomasi_corner_detection_worker(const cv::Mat& J
                 }
             }
 
-            const double det = (jx2 * jy2) - (sumjxy * sumjxy);
-            const double trace = jx2 + jy2;
+            const float det = (jx2 * jy2) - (sumjxy * sumjxy);
+            const float trace = jx2 + jy2;
 
-            const double R = (trace / 2) - (0.5 * std::sqrt(trace * trace - 4 * det));
+            const float R = (trace / 2) - (0.5 * std::sqrt(trace * trace - 4 * det));
 
             R_array[i][j] = R > RESPONSE_THRESHOLD ? R : 0;
             // R_array[i][j] = R;
@@ -105,14 +105,14 @@ void CornerDetectionParallel::shitomasi_corner_detection_worker(const cv::Mat& J
 }
 
 
-// std::vector<cv::KeyPoint> CornerDetectionParallel::non_maximum_suppression(const std::vector<std::vector<double>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
+// std::vector<cv::KeyPoint> CornerDetectionParallel::non_maximum_suppression(const std::vector<std::vector<float>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
 //     std::vector<cv::KeyPoint> output_corners;
 //     output_corners.reserve(N);
 //
 //     std::vector<bool> active(n_rows * n_cols, true);
 // #define IDX(i, j) ((i) * n_cols + (j))
 //     // not to include out of bounce for retinal sampling
-//     constexpr double threshold = 1e-5;
+//     constexpr float threshold = 1e-5;
 //     const int safe_margin_i = std::max(k / 2, 35);
 //     const int safe_margin_j = std::max(k / 2, 37);
 //
@@ -120,7 +120,7 @@ void CornerDetectionParallel::shitomasi_corner_detection_worker(const cv::Mat& J
 //
 //     for (int i = safe_margin_i; i < n_rows - safe_margin_i; ++i) {
 //         for (int j = safe_margin_j; j < n_cols - safe_margin_j; ++j) {
-//             double score = R_values[i][j];
+//             float score = R_values[i][j];
 //             if (score > threshold) {
 //                 candidates.push_back({score, i, j});
 //             }
@@ -134,7 +134,7 @@ void CornerDetectionParallel::shitomasi_corner_detection_worker(const cv::Mat& J
 //         const int j = candidate.j;
 //         if (!active[IDX(i, j)]) continue;
 //         bool is_local_max = true;
-//         const double center_score = R_values[i][j];
+//         const float center_score = R_values[i][j];
 //         for (int di = -k / 2; di <= k / 2 && is_local_max; ++di) {
 //             for (int dj = -k / 2; dj <= k / 2; ++dj) {
 //                 const int ni = i + di;
@@ -163,8 +163,8 @@ void CornerDetectionParallel::shitomasi_corner_detection_worker(const cv::Mat& J
 //
 
 
-std::vector<cv::KeyPoint> CornerDetectionParallel::non_maximum_suppression(const std::vector<std::vector<double>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
-    std::priority_queue<std::tuple<double, int, int>> max_heap; // Store (R_value, i, j)
+std::vector<cv::KeyPoint> CornerDetectionParallel::non_maximum_suppression(const std::vector<std::vector<float>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N) {
+    std::priority_queue<std::tuple<float, int, int>> max_heap; // Store (R_value, i, j)
     std::vector<cv::KeyPoint> output_corners;
     output_corners.reserve(N);
     int count = 0;
@@ -178,7 +178,7 @@ std::vector<cv::KeyPoint> CornerDetectionParallel::non_maximum_suppression(const
                 continue;
             }
 
-            double center_val = R_values[i][j];
+            float center_val = R_values[i][j];
             bool is_local_max = true;
 
             for (int n = i - k / 2; n <= i + k / 2; n++) {
