@@ -24,11 +24,11 @@ __kernel void gradient_convolution(__global uchar* image_data,
 
     for (short k = -1; k <= 1; k++) {
         sumx[k + 1] = (float)(image_data[idx_m1 + k]) - (float)(image_data[idx_p1 + k]); // // [1, 0, -1] T
-        sumy[k + 1] = (float)(image_data[idx_m1 + k]) + 2.0 * (float)(image_data[idx + k]) + (float)(image_data[idx_p1 + k]); // [1, 2, 1] T
+        sumy[k + 1] = (float)(image_data[idx_m1 + k]) + 2.0f * (float)(image_data[idx + k]) + (float)(image_data[idx_p1 + k]); // [1, 2, 1] T
 
     }
 
-    Jx[idx] = sumx[0] + 2.0 * sumx[1] + sumx[2]; // [1, 2, 1]
+    Jx[idx] = sumx[0] + 2.0f * sumx[1] + sumx[2]; // [1, 2, 1]
     Jy[idx]  = sumy[0] - sumy[2]; // [1, 0, -1]
     Jxy[idx]  = sumx[0] - sumx[2]; // [1, 0, -1]
 
