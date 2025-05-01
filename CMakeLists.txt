@@ -73,11 +73,12 @@ add_executable(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING}
         feature_extraction_parallel_GPU/corner_detection_parallel_GPU.cpp
         feature_extraction_parallel_GPU/FREAK_feature_descriptor_parallel_GPU.cpp
         feature_extraction_parallel_GPU/feature_extraction_parallel_GPU.cpp
-        # matching.cpp
+         matching.cpp
 )
 
 target_include_directories(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
+target_compile_definitions(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE GPU_IMPLEMENTATION)
 
 
 add_executable(${BOHDAN_TEST}

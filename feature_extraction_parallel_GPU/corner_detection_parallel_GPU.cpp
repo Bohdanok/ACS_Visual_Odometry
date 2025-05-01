@@ -82,7 +82,7 @@ void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings&
 
     cl::Kernel kernel_shitomasi_response(gpu_settings.program, "shitomasi_response");
 
-    cl::Buffer R_response_buffer(gpu_settings.context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, n_cols * n_rows * sizeof(float));
+    const cl::Buffer R_response_buffer(gpu_settings.context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, n_cols * n_rows * sizeof(float));
 
 
     kernel_shitomasi_response.setArg(0, R_response_buffer);
@@ -122,7 +122,6 @@ void CornerDetectionParallel_GPU::shitomasi_corner_detection(const GPU_settings&
               << " ms" << std::endl;
 #endif
 
-    // std::vector<std::vector<float>> R_array(n_rows, std::vector<float>(n_cols));
 #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
     const auto crutch_start = get_current_time_fenced();
 #endif

@@ -12,7 +12,6 @@
 int main() {
     const std::string filename = "../kernels/feature_extraction_kernel_functions.c";
 
-    // Load kernel source
     std::ifstream opened_file(filename);
     if (!opened_file.is_open()) {
         std::cerr << "Failed to open kernel source file\n";
@@ -22,7 +21,6 @@ int main() {
     std::string src((std::istreambuf_iterator<char>(opened_file)), std::istreambuf_iterator<char>());
     cl::Program::Sources sources({{src.c_str(), src.length() + 1}});
 
-    // Get platform and device
     std::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
 
@@ -132,11 +130,9 @@ int main() {
     }
 
 
-    // Get binary sizes
     std::vector<size_t> binary_sizes = program.getInfo<CL_PROGRAM_BINARY_SIZES>();
     std::vector<std::vector<unsigned char>> binaries = program.getInfo<CL_PROGRAM_BINARIES>();
 
-    // Save first binary to file
     std::ofstream out("../kernels/feature_extraction_kernel_functions.bin", std::ios::binary);
     out.write(reinterpret_cast<const char*>(binaries[0].data()), binary_sizes[0]);
     out.close();

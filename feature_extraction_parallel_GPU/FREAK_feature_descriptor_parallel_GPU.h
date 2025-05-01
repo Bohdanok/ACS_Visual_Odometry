@@ -2,24 +2,44 @@
 // Created by julfy1 on 3/24/25.
 //
 #pragma once
-#ifndef FREAK_FEATURE_DESCRIPTOR_PARALLEL_H
-#define FREAK_FEATURE_DESCRIPTOR_PARALLEL_H
+#ifndef FREAK_FEATURE_DESCRIPTOR_PARALLEL_GPU_H
+#define FREAK_FEATURE_DESCRIPTOR_PARALLEL_GPU_H
 
 #include <opencv2/core.hpp>
 #include <vector>
 #include <array>
+#include <CL/cl2.hpp>
 
 
+
+#ifndef CORNER_DETECTION_PARALLEL
+struct GPU_settings {
+    cl::Program program;
+    cl::Device device;
+    cl::Context context;
+};
+inline std::chrono::high_resolution_clock::time_point
+get_current_time_fenced()
+{
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    auto res_time = std::chrono::high_resolution_clock::now();
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    return res_time;
+}
+#endif
 // #ifndef CORNER_DETECTION
 struct point {
-    int x, y;
+    cl_int x, y;
 };
 // #endif
 
-
 struct test {
-    cv::KeyPoint point1, point2;
+    point point1, point2;
 };
+
+// struct test {
+//     cv::KeyPoint point1, point2;
+// };
 
 constexpr size_t NUM_POINTS = 43;
 constexpr size_t NUM_PAIRS = (NUM_POINTS * (NUM_POINTS - 1)) / 2;
@@ -43,8 +63,10 @@ inline std::array<test, NUM_PAIRS> generate_tests() {
 
     for (size_t i = 0; i < NUM_POINTS; i++) {
         for (size_t j = i + 1; j < NUM_POINTS; j++) {
-            result[index++] = {cv::KeyPoint(cv::Point2f(static_cast<float>(predefined_point_for_matching[i].x), static_cast<float>(predefined_point_for_matching[i].y)), 1.0f),
-                   cv::KeyPoint(cv::Point2f(static_cast<float>(predefined_point_for_matching[j].x), static_cast<float>(predefined_point_for_matching[j].y)), 1.0f)};
+            // result[index++] = {cv::KeyPoint(cv::Point2f(static_cast<float>(predefined_point_for_matching[i].x), static_cast<float>(predefined_point_for_matching[i].y)), 1.0f),
+            //        cv::KeyPoint(cv::Point2f(static_cast<float>(predefined_point_for_matching[j].x), static_cast<float>(predefined_point_for_matching[j].y)), 1.0f)};
+            result[index++] = test{point{(predefined_point_for_matching[i].x, predefined_point_for_matching[i].y)},
+       point{predefined_point_for_matching[j].x, predefined_point_for_matching[j].y}};
         }
     }
 
@@ -97,12 +119,12 @@ constexpr std::array<size_t, 512> PATCH_DESCRIPTION_POINTS =
 constexpr size_t DESCRIPTOR_SIZE = PATCH_DESCRIPTION_POINTS.size();
 
 
-class FREAK_Parallel {
+class FREAK_Parallel_GPU {
 public:
-    static double compute_orientation(const cv::KeyPoint &point, const cv::Mat& image);
-    static void FREAK_feature_description(const std::vector<cv::KeyPoint>& key_points, const cv::Mat blurred_gray_picture, const size_t& starting_key_point_index, std::vector<std::vector<uint8_t>>& descriptor);
-    static void FREAK_feature_description_worker(const std::vector<cv::KeyPoint>& key_points, const cv::Mat& blurred_gray_picture, const size_t& starting_key_point_index, std::vector<std::vector<uint8_t>>& descriptor, const size_t& num_of_keypoints, const size_t& KEYPOINTS_PER_TASK = KEY_POINTS_PER_TASK);
+    // static double compute_orientation(const cv::KeyPoint &point, const cv::Mat& image);
+    static std::vector<std::vector<uint8_t>> FREAK_feature_description(const std::vector<cv::KeyPoint>& key_points, const cv::Mat& blurred_gray_picture, const GPU_settings& GPU_settings);
+    // static void FREAK_feature_description_worker(const std::vector<cv::KeyPoint>& key_points, const cv::Mat& blurred_gray_picture, const size_t& starting_key_point_index, std::vector<std::vector<uint8_t>>& descriptor, const size_t& num_of_keypoints, const size_t& KEYPOINTS_PER_TASK = KEY_POINTS_PER_TASK);
 
 };
 
-#endif //FREAK_FEATURE_DESCRIPTOR_PARALLEL_H
+#endif //FREAK_FEATURE_DESCRIPTOR_PARALLEL_GPU_H

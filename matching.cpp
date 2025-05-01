@@ -13,15 +13,6 @@
 
 #ifdef PARALLEL_IMPLEMENTATION
     #include "feature_extraction_parallel/feature_extraction_parallel.h"
-#else
-    #include "feature_extraction/test_feature_extraction.h"
-#endif
-
-
-// #define VISUALIZATION
-
-constexpr int BINARY_DESCRIPTOR_SIZE = 32;
-constexpr double MATCH_THRESHOLD = 0.5;
 
 inline std::chrono::high_resolution_clock::time_point
 get_current_time_fenced()
@@ -31,6 +22,28 @@ get_current_time_fenced()
     std::atomic_thread_fence(std::memory_order_seq_cst);
     return res_time;
 }
+
+
+#elif  GPU_IMPLEMENTATION
+#include "feature_extraction_parallel_GPU/feature_extraction_parallel_GPU.h"
+#else
+    #include "feature_extraction/test_feature_extraction.h"
+#endif
+
+
+#define VISUALIZATION
+
+constexpr int BINARY_DESCRIPTOR_SIZE = 32;
+constexpr double MATCH_THRESHOLD = 0.5;
+
+// inline std::chrono::high_resolution_clock::time_point
+// get_current_time_fenced()
+// {
+//     std::atomic_thread_fence(std::memory_order_seq_cst);
+//     auto res_time = std::chrono::high_resolution_clock::now();
+//     std::atomic_thread_fence(std::memory_order_seq_cst);
+//     return res_time;
+// }
 
 int hammingDistance(const uint8_t* d1, const uint8_t* d2, int length) {
     int distance = 0;
@@ -278,6 +291,13 @@ int main(int argc, char** argv) {
     auto descs1 = feature_extraction_manager_with_points(image1, pool1);
     auto descs2 = feature_extraction_manager_with_points(image2, pool1);
 
+#elif GPU_IMPLEMENTATION
+    size_t NUMBER_OF_THREADS = 16;
+    std::string kernel_filename = "/home/julfy1/Documents/4th_term/ACS/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.bin";
+    thread_pool pool1(NUMBER_OF_THREADS);
+    auto descs1 = feature_extraction_manager_with_points(img1, kernel_filename);
+    auto descs2 = feature_extraction_manager_with_points(img2, kernel_filename);
+
 #else
     auto descs1 = descriptor_with_points(argv[1]);
     auto descs2 = descriptor_with_points(argv[2]);
@@ -317,6 +337,7 @@ int main(int argc, char** argv) {
     cv::Mat binaryMatchesImg;
     cv::drawMatches(img1, std::get<1>(descs1), img2, std::get<1>(descs2), convertToDMatch(customMatches), binaryMatchesImg);
     cv::imshow("FREAK Matches", binaryMatchesImg);
+    cv::imwrite("FREAK_matches_not_changed.jpeg", binaryMatchesImg);
     cv::waitKey(0);
 #endif
 

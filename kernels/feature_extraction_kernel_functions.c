@@ -1,3 +1,26 @@
+
+typedef struct {
+    int x;
+    int y;
+} point;
+
+typedef struct {
+    point point1;
+    point point2;
+} test;
+
+void atomic_add_float_global(__global float* p, float val) // stackoverflow
+{
+    asm volatile(
+        "atom.global.add.f32 _, [%0], %1;"  // "_" or omit output
+        :
+        : "l"(p), "f"(val)
+        : "memory"
+    );
+}
+
+
+
 __kernel void gradient_convolution(__global uchar* image_data,
                                    __global float* Jx,
                                    __global float* Jy,
@@ -74,4 +97,85 @@ __kernel void shitomasi_response(__global float* R_renponse,
     // R_array[i][j] = R;
     // max_R = std::max(R, max_R);
 
+}
+
+__kernel void compute_orientation(__global const uchar* image_data,
+                                  __global const test* test_cases,
+                                  __global float* O_x,
+                                  __global float* O_y,
+                                  __global point* key_points,
+                                  const int key_point_index,
+                                  const int width) {
+
+//	size_t i = get_global_id(1);
+//    size_t j = get_global_id(0); i = point1 <===> j = point2
+
+	const size_t id = get_global_id(0);
+
+	const float point1_intensity = (float)(image_data[(test_cases[id].point1.y + key_points[key_point_index].y) * width + test_cases[id].point1.x + key_points[key_point_index].x]);
+
+    const float intensity_change = point1_intensity - (float)(image_data[(test_cases[id].point2.y + key_points[key_point_index].y) * width + test_cases[id].point2.x  + key_points[key_point_index].x]);
+
+
+	// norm of 2 vectors
+     const double norm = sqrt(pow(test_cases[id].point1.y + key_points[key_point_index].y - test_cases[id].point2.y + key_points[key_point_index].y, 2.0) +
+         pow(test_cases[id].point1.x + key_points[key_point_index].x - test_cases[id].point2.x + key_points[key_point_index].x, 2.0) );
+
+
+    atomic_add_float_global(O_x, intensity_change * (test_cases[id].point1.x - test_cases[id].point2.x) / norm);
+    atomic_add_float_global(O_y, intensity_change * (test_cases[id].point1.y - test_cases[id].point2.y) / norm);
+
+
+}
+
+__kernel void merge_orientation_tasks(__global float* O_x,
+                                      __global float* O_y,
+                                      __global float* rotation_matrix) {
+
+//  	const float o_x = atomic_load(O_x);
+//	const float o_y = atomic_load(O_y);
+
+
+    if (isnan(*O_x) || isnan(*O_y)) { // a check for isinf() might be useful here
+        const float angle = 0.0f;
+    }
+    const float angle = atan2(*O_y, *O_x);
+
+    rotation_matrix[0] = cos(angle);
+    rotation_matrix[1] = -1.0f * sin(angle);
+    rotation_matrix[2] = sin(angle);
+    rotation_matrix[3] = cos(angle);
+
+    *O_x = 0.0;
+    *O_y = 0.0;
+
+}
+
+__kernel void compute_descriptor(__global uchar* descriptor,
+                                 __global const uchar* image,
+                                 __global const size_t* patch_description_points,
+                                 __global point* key_points,
+                                  const int key_point_index,
+                                 __global const float* rotation_matrix,
+                                 __global const test* test_cases,
+                                 const int width) {
+
+	const size_t id = get_global_id(0); // j
+
+    const test cur_patch = test_cases[patch_description_points[id]];
+
+    const point pt1 = cur_patch.point1;
+    const point pt2 = cur_patch.point2;
+
+    const point pnt1 = {(int)(key_points[key_point_index].x +
+        pt1.x * rotation_matrix[0] + pt1.y * rotation_matrix[2]),
+        (int)(key_points[key_point_index].y + (-1) * pt1.x * rotation_matrix[1] + pt1.y * rotation_matrix[3])};
+
+    const point pnt2 = {(int)(key_points[key_point_index].x +
+        pt2.x * rotation_matrix[0] + pt2.y * rotation_matrix[2]),
+        (int)(key_points[key_point_index].y + (-1) * pt2.x * rotation_matrix[1] + pt2.y * rotation_matrix[3])};
+
+
+    descriptor[key_point_index * 512 + id] = image[width * pnt1.y + pnt1.x] > image[width * pnt2.y + pnt2.x] ? 1 : 0;
+//	descriptor[key_point_index * 512 + id] = 69;
 }

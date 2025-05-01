@@ -11,6 +11,8 @@
 
 #include "threadpool.h"
 #include "corner_detection_parallel_GPU.h"
+#include "FREAK_feature_descriptor_parallel_GPU.h"
+
 
 #include <fstream>
 #include <iostream>
@@ -48,8 +50,9 @@ void print_descriptor(const std::vector<std::vector<uint8_t>>& descriptor);
 cl::Program create_platform_from_binary(const std::string &binary_filename);
 
 
-std::vector<std::vector<uint8_t>> feature_extraction_manager(const cv::Mat& image);
-
+// std::vector<std::vector<uint8_t>> feature_extraction_manager(const cv::Mat& image);
+std::vector<std::vector<uint8_t>> feature_extraction_manager(const cv::Mat& image, const std::string& kerlen_filename);
+std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_extraction_manager_with_points(const cv::Mat& image, const std::string& kerlen_filename);
 
 
 #endif //FEATURE_EXTRACTION_PARALLEL_H

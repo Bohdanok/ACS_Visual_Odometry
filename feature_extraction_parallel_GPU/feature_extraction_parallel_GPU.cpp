@@ -8,9 +8,28 @@
 #include <opencv2/highgui.hpp>
 
 // #define VISUALIZATION
-#define INTERMEDIATE_TIME_MEASUREMENTS
+// #define INTERMEDIATE_TIME_MEASUREMENTS
 // #define INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
 
+void print_descriptor(const std::vector<std::vector<uint8_t>>& descriptor){
+    std::cout << "/////////////////////////////////////////////////////////////" << std::endl;
+    for (size_t i = 0; i < descriptor.size(); i++) {
+        std::cout << "<";
+        for (size_t j = 0; j < descriptor[0].size(); j++) {
+            std::cout << static_cast<int>(descriptor[i][j]) << ", ";
+        }
+        std::cout << ">" << std::endl;
+
+    }
+    std::cout << "/////////////////////////////////////////////////////////////" << std::endl;
+
+}
+
+bool is_number(const std::string& s) {
+    std::string::const_iterator it = s.begin();
+    while (it != s.end() && std::isdigit(*it)) ++it;
+    return !s.empty() && it == s.end();
+}
 
 void draw_score_distribution(const std::vector<std::vector<float>>& R_values, const std::string& win_name) {
 
@@ -119,7 +138,7 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(const cv::Mat& imag
     const int n_rows = my_blurred_gray.rows;
     const int n_cols = my_blurred_gray.cols;
 
-    std::vector<std::vector<float>> R_score(n_rows, std::vector<float>(n_cols, 250000));
+    std::vector<std::vector<float>> R_score(n_rows, std::vector<float>(n_cols));
 
 #ifdef INTERMEDIATE_TIME_MEASUREMENTS
     const auto start = get_current_time_fenced();
@@ -149,35 +168,116 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(const cv::Mat& imag
     });
 
 #ifdef VISUALIZATION
-        for (auto coords : local_mins_shitomasi) {
+        for (const auto coords : local_mins_shitomasi) {
 
             // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
 
             cv::circle(image, cv::Point(coords.pt.x, coords.pt.y), 5, cv::Scalar(0, 0, 255), 3);
         }
+    draw_score_distribution(R_score, "Response");
+
     cv::imwrite("COrners.jpg", image);
+    cv::imshow("Corners GPU", image);
     cv::waitKey(0);
     cv::destroyAllWindows();
 #endif
+    // std::vector<std::vector<uint8_t>> descriptor = {{1}};
 
-    std::vector<std::vector<uint8_t>> descriptor(1, std::vector<uint8_t>(1));
+    auto descriptor = FREAK_Parallel_GPU::FREAK_feature_description(local_mins_shitomasi, my_blurred_gray, GPU_settings);
+
+    // print_descriptor(descriptor);
 
     return descriptor;
 }
-// just for testing
-int main(int argc, char** argv) {
 
-    const std::string image_filename = argv[1]; // "/home/julfy/Documents/ACS/ACS_Visual_Odometry/images/Zhovkva2.jpg";
-                                        //  "/home/julfy/Documents/ACS/ACS_Visual_Odometry/test_images/notrd1.jpg"
 
-    const std::string kernel_path = argv[2];
-    cv::Mat image = cv::imread(image_filename, cv::IMREAD_GRAYSCALE);
+std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_extraction_manager_with_points(const cv::Mat& image, const std::string& kerlen_filename) {
+    // Preprocess the image and prepare the enviroment
 
-    // const std::string kernel_path = "/home/julfy/Documents/ACS/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.bin"; // argv?
+    // const std::string kernel_path = "/home/julfy/Documents/ACS/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.bin"; // TODO argv?
 
-    feature_extraction_manager(image, kernel_path);
+    // const std::string image_filename = "/home/julfy/Documents/ACS/ACS_Visual_Odometry/images/Zhovkva2.jpg";
 
+    const auto program = create_platform_from_binary(kerlen_filename);
+
+    const auto devices = program.getInfo<CL_PROGRAM_DEVICES>();
+    const auto& device = devices.front(); // TODO Take the best device
+    const auto context = program.getInfo<CL_PROGRAM_CONTEXT>();
+
+    const GPU_settings GPU_settings({program, device, context});
+
+    cv::Mat my_blurred_gray;
+    cv::GaussianBlur(image, my_blurred_gray, cv::Size(7, 7), 0);
+
+    const int n_rows = my_blurred_gray.rows;
+    const int n_cols = my_blurred_gray.cols;
+
+    std::vector<std::vector<float>> R_score(n_rows, std::vector<float>(n_cols));
+
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS
+    const auto start = get_current_time_fenced();
+#endif
+
+    CornerDetectionParallel_GPU::shitomasi_corner_detection(GPU_settings, my_blurred_gray, R_score);
+
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS
+    const auto end = get_current_time_fenced();
+    std::cout << "GPU response calculations: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+              << " ms" << std::endl;
+#endif
+
+    // draw_score_distribution(R_score, "Response");
+    //
+    // cv::waitKey(0);
+    // cv::destroyAllWindows();
+
+    auto local_mins_shitomasi = CornerDetectionParallel_GPU::non_maximum_suppression(R_score, n_rows, n_cols, 5, 1500);
+
+    std::sort(local_mins_shitomasi.begin(), local_mins_shitomasi.end(), [](const cv::KeyPoint& a, const cv::KeyPoint& b) {
+        const int ay = static_cast<int>(a.pt.y);
+        const int by = static_cast<int>(b.pt.y);
+        if (ay == by)
+            return static_cast<int>(a.pt.x) < static_cast<int>(b.pt.x);
+        return ay < by;
+    });
+
+#ifdef VISUALIZATION
+        for (const auto coords : local_mins_shitomasi) {
+
+            // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
+
+            cv::circle(image, cv::Point(coords.pt.x, coords.pt.y), 5, cv::Scalar(0, 0, 255), 3);
+        }
+    draw_score_distribution(R_score, "Response");
+
+    cv::imwrite("COrners.jpg", image);
+    cv::imshow("Corners GPU", image);
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+#endif
+    // std::vector<std::vector<uint8_t>> descriptor = {{1}};
+
+    auto descriptor = FREAK_Parallel_GPU::FREAK_feature_description(local_mins_shitomasi, my_blurred_gray, GPU_settings);
+
+    // print_descriptor(descriptor);
+
+    return {descriptor, local_mins_shitomasi};
 }
+
+// just for testing
+// int main(int argc, char** argv) {
+//
+//     const std::string image_filename = argv[1]; // "/home/julfy/Documents/ACS/ACS_Visual_Odometry/images/Zhovkva2.jpg";
+//                                         //  "/home/julfy/Documents/ACS/ACS_Visual_Odometry/test_images/notrd1.jpg"
+//
+//     const std::string kernel_path = argv[2];
+//     cv::Mat image = cv::imread(image_filename, cv::IMREAD_GRAYSCALE);
+//
+//     // const std::string kernel_path = "/home/julfy/Documents/ACS/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.bin"; // argv?
+//
+//     feature_extraction_manager(image, kernel_path);
+//
+// }
 
 //     cv::Mat my_blurred_gray;
 //
@@ -407,25 +507,6 @@ int main(int argc, char** argv) {
 //
 
 
-
-void print_descriptor(const std::vector<std::vector<uint8_t>>& descriptor){
-    std::cout << "/////////////////////////////////////////////////////////////" << std::endl;
-    for (size_t i = 0; i < descriptor.size(); i++) {
-        std::cout << "<";
-        for (size_t j = 0; j < descriptor[0].size(); j++) {
-            std::cout << static_cast<int>(descriptor[i][j]) << ", ";
-        }
-        std::cout << ">" << std::endl;
-    }
-    std::cout << "/////////////////////////////////////////////////////////////" << std::endl;
-
-}
-
-bool is_number(const std::string& s) {
-    std::string::const_iterator it = s.begin();
-    while (it != s.end() && std::isdigit(*it)) ++it;
-    return !s.empty() && it == s.end();
-}
 
 
 //
