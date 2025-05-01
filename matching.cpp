@@ -31,7 +31,7 @@ get_current_time_fenced()
 #endif
 
 
-#define VISUALIZATION
+// #define VISUALIZATION
 
 constexpr int BINARY_DESCRIPTOR_SIZE = 32;
 constexpr double MATCH_THRESHOLD = 0.5;
@@ -296,50 +296,50 @@ int main(int argc, char** argv) {
     std::string kernel_filename = "/home/julfy1/Documents/4th_term/ACS/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.bin";
     thread_pool pool1(NUMBER_OF_THREADS);
     auto descs1 = feature_extraction_manager_with_points(img1, kernel_filename);
-    auto descs2 = feature_extraction_manager_with_points(img2, kernel_filename);
+    // auto descs2 = feature_extraction_manager_with_points(img2, kernel_filename);
 
 #else
     auto descs1 = descriptor_with_points(argv[1]);
     auto descs2 = descriptor_with_points(argv[2]);
 #endif
-    auto end_feature_extraction = get_current_time_fenced();
-
-    std::cout << "Number of keypoints: " << std::get<1>(descs1).size() << std::endl;
-    std::cout << "Number of keypoints: " << std::get<1>(descs2).size() << std::endl;
-
-
-    std::cout << "Time for feature extraction: "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end_feature_extraction - start_feature_extraction).count()
-              << " ms" << std::endl;
-
-
-    std::vector<std::pair<int, int>> customMatches;
-    auto start = get_current_time_fenced();
-    customMatches = matchCustomBinaryDescriptorsThreadPool(
-    	std::get<0>(descs1),
-    	std::get<0>(descs2),
-    	pool1,
-    	NUMBER_OF_THREADS
-	);
-
-    auto end = get_current_time_fenced();
-
-    // std::cout <<
-
-    std::cout << "Time for matching: "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-              << " ms" << std::endl;
-
-
-    std::cout << "Custom binary matches: " << customMatches.size() << std::endl;
-//    std::cout << "Is 1 object" << (customMatches.size() == MATCH_THRESHOLD * ? "yes" : " not");
-#ifdef VISUALIZATION
-    cv::Mat binaryMatchesImg;
-    cv::drawMatches(img1, std::get<1>(descs1), img2, std::get<1>(descs2), convertToDMatch(customMatches), binaryMatchesImg);
-    cv::imshow("FREAK Matches", binaryMatchesImg);
-    cv::imwrite("FREAK_matches_not_changed.jpeg", binaryMatchesImg);
-    cv::waitKey(0);
-#endif
+//     auto end_feature_extraction = get_current_time_fenced();
+//
+//     std::cout << "Number of keypoints: " << std::get<1>(descs1).size() << std::endl;
+//     std::cout << "Number of keypoints: " << std::get<1>(descs2).size() << std::endl;
+//
+//
+//     std::cout << "Time for feature extraction: "
+//               << std::chrono::duration_cast<std::chrono::milliseconds>(end_feature_extraction - start_feature_extraction).count()
+//               << " ms" << std::endl;
+//
+//
+//     std::vector<std::pair<int, int>> customMatches;
+//     auto start = get_current_time_fenced();
+//     customMatches = matchCustomBinaryDescriptorsThreadPool(
+//     	std::get<0>(descs1),
+//     	std::get<0>(descs2),
+//     	pool1,
+//     	NUMBER_OF_THREADS
+// 	);
+//
+//     auto end = get_current_time_fenced();
+//
+//     // std::cout <<
+//
+//     std::cout << "Time for matching: "
+//               << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+//               << " ms" << std::endl;
+//
+//
+//     std::cout << "Custom binary matches: " << customMatches.size() << std::endl;
+// //    std::cout << "Is 1 object" << (customMatches.size() == MATCH_THRESHOLD * ? "yes" : " not");
+// #ifdef VISUALIZATION
+//     cv::Mat binaryMatchesImg;
+//     cv::drawMatches(img1, std::get<1>(descs1), img2, std::get<1>(descs2), convertToDMatch(customMatches), binaryMatchesImg);
+//     cv::imshow("FREAK Matches", binaryMatchesImg);
+//     cv::imwrite("FREAK_matches_not_changed.jpeg", binaryMatchesImg);
+//     cv::waitKey(0);
+// #endif
 
     return 0;
 }
