@@ -9,7 +9,7 @@
 
 // #define VISUALIZATION
 // #define INTERMEDIATE_TIME_MEASUREMENTS
-// #define INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+#define INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
 
 void print_descriptor(const std::vector<std::vector<uint8_t>>& descriptor){
     std::cout << "/////////////////////////////////////////////////////////////" << std::endl;
@@ -117,20 +117,20 @@ cl::Program create_platform_from_binary(const std::string &binary_filename) {
 }
 
 
-std::vector<std::vector<uint8_t>> feature_extraction_manager(const cv::Mat& image, const std::string& kerlen_filename) {
+std::vector<std::vector<uint8_t>> feature_extraction_manager(const cv::Mat& image, const GPU_settings& GPU_settings) {
     // Preprocess the image and prepare the enviroment
 
     // const std::string kernel_path = "/home/julfy/Documents/ACS/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.bin"; // TODO argv?
 
     // const std::string image_filename = "/home/julfy/Documents/ACS/ACS_Visual_Odometry/images/Zhovkva2.jpg";
 
-    const auto program = create_platform_from_binary(kerlen_filename);
-
-    const auto devices = program.getInfo<CL_PROGRAM_DEVICES>();
-    const auto& device = devices.front(); // TODO Take the best device
-    const auto context = program.getInfo<CL_PROGRAM_CONTEXT>();
-
-    const GPU_settings GPU_settings({program, device, context});
+    // const auto program = create_platform_from_binary(kerlen_filename);
+    //
+    // const auto devices = program.getInfo<CL_PROGRAM_DEVICES>();
+    // const auto& device = devices.front(); // TODO Take the best device
+    // const auto context = program.getInfo<CL_PROGRAM_CONTEXT>();
+    //
+    // const GPU_settings GPU_settings({program, device, context});
 
     cv::Mat my_blurred_gray;
     cv::GaussianBlur(image, my_blurred_gray, cv::Size(7, 7), 0);
@@ -191,20 +191,10 @@ std::vector<std::vector<uint8_t>> feature_extraction_manager(const cv::Mat& imag
 }
 
 
-std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_extraction_manager_with_points(const cv::Mat& image, const std::string& kerlen_filename) {
-    // Preprocess the image and prepare the enviroment
-
-    // const std::string kernel_path = "/home/julfy/Documents/ACS/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.bin"; // TODO argv?
-
-    // const std::string image_filename = "/home/julfy/Documents/ACS/ACS_Visual_Odometry/images/Zhovkva2.jpg";
-
-    const auto program = create_platform_from_binary(kerlen_filename);
-
-    const auto devices = program.getInfo<CL_PROGRAM_DEVICES>();
-    const auto& device = devices.front(); // TODO Take the best device
-    const auto context = program.getInfo<CL_PROGRAM_CONTEXT>();
-
-    const GPU_settings GPU_settings({program, device, context});
+std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_extraction_manager_with_points(const cv::Mat& image, const GPU_settings& GPU_settings) {
+// #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+//     const auto start_gaussian = get_current_time_fenced();
+// #endif
 
     cv::Mat my_blurred_gray;
     cv::GaussianBlur(image, my_blurred_gray, cv::Size(7, 7), 0);
@@ -214,13 +204,22 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
 
     std::vector<std::vector<float>> R_score(n_rows, std::vector<float>(n_cols));
 
-#ifdef INTERMEDIATE_TIME_MEASUREMENTS
+
+// #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+//     const auto end_gaussian = get_current_time_fenced();
+//     std::cout << "Gaussian calculation:: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_gaussian - start_gaussian).count()
+//               << " ms" << std::endl;
+// #endif
+//
+
+
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
     const auto start = get_current_time_fenced();
 #endif
 
     CornerDetectionParallel_GPU::shitomasi_corner_detection(GPU_settings, my_blurred_gray, R_score);
 
-#ifdef INTERMEDIATE_TIME_MEASUREMENTS
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
     const auto end = get_current_time_fenced();
     std::cout << "GPU response calculations: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
               << " ms" << std::endl;
@@ -230,9 +229,33 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
     //
     // cv::waitKey(0);
     // cv::destroyAllWindows();
-
+// #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+//     const auto start_nms = get_current_time_fenced();
+// #endif
     auto local_mins_shitomasi = CornerDetectionParallel_GPU::non_maximum_suppression(R_score, n_rows, n_cols, 5, 1500);
+    // cv::Mat new_image;
+    // if (image.channels() == 1) cv::cvtColor(image, new_image, cv::COLOR_GRAY2BGR);
+    //
+    // for (auto coords : local_mins_shitomasi) {
+    //
+    //     // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
+    //
+    //     cv::circle(new_image, cv::Point(coords.pt.x, coords.pt.y), 1, cv::Scalar(0, 0, 255), 3);
+    // }
+    // cv::imshow("GPU CORNERS", new_image);
+    // cv::waitKey(0);
+    // cv::destroyAllWindows();
 
+// #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+//     const auto end_nms = get_current_time_fenced();
+//     std::cout << "Non maximum suppression: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_nms - start_nms).count()
+//               << " ms" << std::endl;
+// #endif
+
+
+// #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+//     const auto start_sorting = get_current_time_fenced();
+// #endif
     std::sort(local_mins_shitomasi.begin(), local_mins_shitomasi.end(), [](const cv::KeyPoint& a, const cv::KeyPoint& b) {
         const int ay = static_cast<int>(a.pt.y);
         const int by = static_cast<int>(b.pt.y);
@@ -240,6 +263,14 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
             return static_cast<int>(a.pt.x) < static_cast<int>(b.pt.x);
         return ay < by;
     });
+
+// #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+//     const auto end_sorting = get_current_time_fenced();
+//     std::cout << "Sorting time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_sorting - start_sorting).count()
+//               << " ms" << std::endl;
+// #endif
+
+
 
 #ifdef VISUALIZATION
         for (const auto coords : local_mins_shitomasi) {
@@ -256,286 +287,20 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
     cv::destroyAllWindows();
 #endif
     // std::vector<std::vector<uint8_t>> descriptor = {{1}};
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+    const auto buffer_read_start = get_current_time_fenced();
+#endif
 
     auto descriptor = FREAK_Parallel_GPU::FREAK_feature_description(local_mins_shitomasi, my_blurred_gray, GPU_settings);
+
+#ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+    const auto end_buffer_read = get_current_time_fenced();
+    // buffer_write_time += std::chrono::duration_cast<std::chrono::milliseconds>(start_buffer_write - end_buffer_write).count();
+    std::cout << "FEATURE EXTRACTION DESCRIPTOR FUNCTION: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_buffer_read - buffer_read_start).count()
+              << " ms" << std::endl;
+#endif
 
     // print_descriptor(descriptor);
 
     return {descriptor, local_mins_shitomasi};
 }
-
-// just for testing
-// int main(int argc, char** argv) {
-//
-//     const std::string image_filename = argv[1]; // "/home/julfy/Documents/ACS/ACS_Visual_Odometry/images/Zhovkva2.jpg";
-//                                         //  "/home/julfy/Documents/ACS/ACS_Visual_Odometry/test_images/notrd1.jpg"
-//
-//     const std::string kernel_path = argv[2];
-//     cv::Mat image = cv::imread(image_filename, cv::IMREAD_GRAYSCALE);
-//
-//     // const std::string kernel_path = "/home/julfy/Documents/ACS/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.bin"; // argv?
-//
-//     feature_extraction_manager(image, kernel_path);
-//
-// }
-
-//     cv::Mat my_blurred_gray;
-//
-//     const cv::Mat blurred = CornerDetectionParallel::custom_bgr2gray(image);
-//
-//     cv::GaussianBlur(blurred, my_blurred_gray, cv::Size(7, 7), 0);
-//
-//     const int n_rows = my_blurred_gray.rows;
-//     const int n_cols = my_blurred_gray.cols;
-//     // rows 400 cols 900
-//     cv::Mat Jx = cv::Mat::zeros(n_rows, n_cols, CV_64F);
-//     cv::Mat Jy = cv::Mat::zeros(n_rows, n_cols, CV_64F);
-//     cv::Mat Jxy = cv::Mat::zeros(n_rows, n_cols, CV_64F);
-//
-//     std::vector<std::vector<float>> R_array(n_rows, std::vector<float>(n_cols, 0));
-//
-//
-//     std::vector<std::future<void>> futures_responses;
-//     std::vector<std::future<void>> futures_descriptor;
-//
-//
-//     for (int i = 0; i < n_rows; i += BLOCK_SIZE) {
-//         // const interval interval = {{j, std::min(n_cols, j + BLOCK_SIZE + 2)}, {i, std::min(n_rows, i + BLOCK_SIZE + 2)}};
-//         // const interval interval = {{0, std::min(i + BLOCK_SIZE, n_rows)}, {i, std::min(n_rows, i + BLOCK_SIZE + 2)}};
-//         const interval interval = {{0, n_cols}, {i, std::min(i + BLOCK_SIZE + 4, n_rows)}};
-//         // intervals.emplace_back(interval);
-// #ifdef VISUALIZATION
-//         cv::rectangle(image,
-//                   cv::Point(interval.cols.start, interval.rows.start),
-//                   cv::Point(interval.cols.end, interval.rows.end),
-//                   cv::Scalar(0, 255, 0), 1);
-// #endif
-//         // print_interval(interval);
-//         futures_responses.emplace_back(pool.submit([&my_blurred_gray, &Jx, &Jy, &Jxy, &R_array, interval]() {
-//             response_worker(my_blurred_gray, interval, Jx, Jy, Jxy, R_array);
-//         }));
-//     }
-
-//
-//     for (int i = 0; i < n_rows; i += BLOCK_SIZE) {
-//         for (int j = 0; j < n_cols; j += BLOCK_SIZE) {
-//             // const interval interval = {{j, std::min(n_cols, j + BLOCK_SIZE + 2)}, {i, std::min(n_rows, i + BLOCK_SIZE + 2)}};
-//             const interval interval = {{j, std::min(n_cols, j + BLOCK_SIZE + 2)}, {i, std::min(n_rows, i + BLOCK_SIZE + 2)}};
-//
-//             // intervals.emplace_back(interval);
-// #ifdef VISUALIZATION
-//             cv::rectangle(image,
-//                       cv::Point(interval.cols.start, interval.rows.start),
-//                       cv::Point(interval.cols.end, interval.rows.end),
-//                       cv::Scalar(0, 255, 0), 1);
-// #endif
-//             // print_interval(interval);
-//             futures_responses.emplace_back(pool.submit([&my_blurred_gray, &Jx, &Jy, &Jxy, &R_array, interval]() {
-//                 response_worker(my_blurred_gray, interval, Jx, Jy, Jxy, R_array);
-//             }));
-//         }
-//     }
-
-    // for (auto &future : futures_responses) {
-    //     future.get();
-    // }
-    //
-    // auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 1500);
-    //
-    // std::sort(local_mins_shitomasi.begin(), local_mins_shitomasi.end(), [](const cv::KeyPoint& a, const cv::KeyPoint& b) {
-    //     const int ay = static_cast<int>(a.pt.y);
-    //     const int by = static_cast<int>(b.pt.y);
-    //     if (ay == by)
-    //         return static_cast<int>(a.pt.x) < static_cast<int>(b.pt.x);
-    //     return ay < by;
-    // });
-    //
-    //
-    // #ifdef VISUALIZATION
-    //     for (auto coords : local_mins_shitomasi) {
-    //
-    //         // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
-    //
-    //         cv::circle(image, cv::Point(coords.pt.x, coords.pt.y), 1, cv::Scalar(0, 0, 255), 3);
-    //     }
-    //
-    //     cv::imshow("BOhdan with corners harris", image);
-    //
-    //     draw_score_distribution(R_array, "Response");
-    //     //
-    //     // cv::imshow("Jx", Jx);
-    //     // cv::imshow("Jy", Jy);
-    //     // cv::imshow("Jxy", Jxy);
-    //
-    //     cv::waitKey(0);
-    //
-    //     cv::destroyAllWindows();
-    // #endif
-    //
-    // size_t cur_index = 0;
-    // const size_t num_of_keypoints = local_mins_shitomasi.size();
-    //
-    // std::vector<std::vector<uint8_t>> descriptor(num_of_keypoints, std::vector<uint8_t>(DESCRIPTOR_SIZE));
-    //
-    //
-    // while (cur_index + KEY_POINTS_PER_TASK < num_of_keypoints) {
-    //
-    //     futures_descriptor.emplace_back(pool.submit([&local_mins_shitomasi, &my_blurred_gray, cur_index, &descriptor, &num_of_keypoints]() {
-    //         FREAK_Parallel::FREAK_feature_description_worker(local_mins_shitomasi, my_blurred_gray, cur_index, descriptor, num_of_keypoints);
-    //     }));
-    //     cur_index += KEY_POINTS_PER_TASK;
-    // }
-    //
-    // futures_descriptor.emplace_back(pool.submit([&local_mins_shitomasi, &my_blurred_gray, cur_index, &descriptor, &num_of_keypoints]() {
-    //         FREAK_Parallel::FREAK_feature_description_worker(local_mins_shitomasi, my_blurred_gray, cur_index, descriptor, num_of_keypoints, num_of_keypoints - cur_index);
-    //     }));
-    //
-    // for (auto &future : futures_descriptor) {
-    //     future.get();
-    // }
-    //
-    // // cv::imshow("Intbervals", image);
-    // //
-    // // cv::waitKey(0);
-    // //
-    // // cv::destroyAllWindows();
-    //
-    // return descriptor;
-
-
-// std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_extraction_manager_with_points(cv::Mat& image, thread_pool& pool) {
-//
-//     // Preprocess the image and prepare the enviroment
-//
-//     cv::Mat my_blurred_gray;
-//
-//     const cv::Mat blurred = CornerDetectionParallel::custom_bgr2gray(image);
-//
-//     cv::GaussianBlur(blurred, my_blurred_gray, cv::Size(7, 7), 0);
-//
-//     const int n_rows = my_blurred_gray.rows;
-//     const int n_cols = my_blurred_gray.cols;
-//     // rows 400 cols 900
-//     cv::Mat Jx = cv::Mat::zeros(n_rows, n_cols, CV_64F);
-//     cv::Mat Jy = cv::Mat::zeros(n_rows, n_cols, CV_64F);
-//     cv::Mat Jxy = cv::Mat::zeros(n_rows, n_cols, CV_64F);
-//
-//     std::vector<std::vector<float>> R_array(n_rows, std::vector<float>(n_cols, 0));
-//
-//
-//     std::vector<std::future<void>> futures_responses;
-//     std::vector<std::future<void>> futures_descriptor;
-//
-//
-//     for (int i = 0; i < n_rows; i += BLOCK_SIZE) {
-//         // const interval interval = {{j, std::min(n_cols, j + BLOCK_SIZE + 2)}, {i, std::min(n_rows, i + BLOCK_SIZE + 2)}};
-//         // const interval interval = {{0, std::min(i + BLOCK_SIZE, n_rows)}, {i, std::min(n_rows, i + BLOCK_SIZE + 2)}};
-//         const interval interval = {{0, n_cols}, {i, std::min(i + BLOCK_SIZE + 4, n_rows)}};
-//         // intervals.emplace_back(interval);
-// #ifdef VISUALIZATION
-//         cv::rectangle(image,
-//                   cv::Point(interval.cols.start, interval.rows.start),
-//                   cv::Point(interval.cols.end, interval.rows.end),
-//                   cv::Scalar(0, 255, 0), 1);
-// #endif
-//         // print_interval(interval);
-//         futures_responses.emplace_back(pool.submit([&my_blurred_gray, &Jx, &Jy, &Jxy, &R_array, interval]() {
-//             response_worker(my_blurred_gray, interval, Jx, Jy, Jxy, R_array);
-//         }));
-//     }
-//
-//     for (auto &future : futures_responses) {
-//         future.get();
-//     }
-//
-//     auto local_mins_shitomasi = CornerDetectionParallel::non_maximum_suppression(R_array, n_rows, n_cols, 5, 1500);
-//
-//     std::sort(local_mins_shitomasi.begin(), local_mins_shitomasi.end(), [](const cv::KeyPoint& a, const cv::KeyPoint& b) {
-//         const int ay = static_cast<int>(a.pt.y);
-//         const int by = static_cast<int>(b.pt.y);
-//         if (ay == by)
-//             return static_cast<int>(a.pt.x) < static_cast<int>(b.pt.x);
-//         return ay < by;
-//     });
-//
-//     #ifdef VISUALIZATION
-//         for (auto coords : local_mins_shitomasi) {
-//
-//             // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
-//
-//             cv::circle(image, cv::Point(coords.pt.x, coords.pt.y), 1, cv::Scalar(0, 0, 255), 3);
-//         }
-//
-//         cv::imshow("BOhdan with corners harris", image);
-//
-//         // draw_score_distribution(R_array, "Response");
-//         //
-//         // cv::imshow("Jx", Jx);
-//         // cv::imshow("Jy", Jy);
-//         // cv::imshow("Jxy", Jxy);
-//
-//         cv::waitKey(0);
-//
-//         cv::destroyAllWindows();
-//     #endif
-//
-//     size_t cur_index = 0;
-//     const size_t num_of_keypoints = local_mins_shitomasi.size();
-//
-//     std::vector<std::vector<uint8_t>> descriptor(num_of_keypoints, std::vector<uint8_t>(DESCRIPTOR_SIZE));
-//
-//
-//     while (cur_index + KEY_POINTS_PER_TASK < num_of_keypoints) {
-//
-//         futures_descriptor.emplace_back(pool.submit([&local_mins_shitomasi, &my_blurred_gray, cur_index, &descriptor, &num_of_keypoints]() {
-//             FREAK_Parallel::FREAK_feature_description_worker(local_mins_shitomasi, my_blurred_gray, cur_index, descriptor, num_of_keypoints);
-//         }));
-//         cur_index += KEY_POINTS_PER_TASK;
-//     }
-//
-//     futures_descriptor.emplace_back(pool.submit([&local_mins_shitomasi, &my_blurred_gray, cur_index, &descriptor, &num_of_keypoints]() {
-//             FREAK_Parallel::FREAK_feature_description_worker(local_mins_shitomasi, my_blurred_gray, cur_index, descriptor, num_of_keypoints, num_of_keypoints - cur_index);
-//         }));
-//
-//     for (auto &future : futures_descriptor) {
-//         future.get();
-//     }
-//
-//     return {descriptor, local_mins_shitomasi};
-//
-// }
-//
-
-
-
-
-//
-// int main() {
-//     const std::string filename = "/home/julfy1/Documents/4th_term/ACS/ACS_Visual_Odometry_SOFIA/ACS_Visual_Odometry/images/Zhovkva2.jpg";
-//
-//     cv::Mat image = cv::imread(filename);
-//
-//
-//     thread_pool pool(NUMBER_OF_THREADS);
-//
-//     const auto descriptor = feature_extraction_manager(image, pool);
-//
-//     print_descriptor(descriptor);
-//
-// #ifdef VISUALIZATION
-//     for (auto coords : local_mins_shitomasi) {
-//
-//         // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
-//
-//         cv::circle(image1, cv::Point(coords.pt.x, coords.pt.y), 1, cv::Scalar(0, 0, 255), 3);
-//     }
-//
-//     cv::imshow("BOhdan with corners harris", image1);
-//
-//     cv::waitKey(0);
-//
-//     cv::destroyAllWindows();
-// #endif
-//
-//
-// }

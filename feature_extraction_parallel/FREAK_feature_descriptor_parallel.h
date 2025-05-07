@@ -9,22 +9,25 @@
 #include <vector>
 #include <array>
 
-
+constexpr size_t KEY_POINTS_PER_TASK = 30;
 // #ifndef CORNER_DETECTION
+#ifndef FEATURE_EXTRACTION_PARALLEL_GPU_H
 struct point {
     int x, y;
 };
-// #endif
-
 
 struct test {
     cv::KeyPoint point1, point2;
 };
 
+// #endif
+
+
+
 constexpr size_t NUM_POINTS = 43;
 constexpr size_t NUM_PAIRS = (NUM_POINTS * (NUM_POINTS - 1)) / 2;
 
-constexpr size_t KEY_POINTS_PER_TASK = 30;
+
 
 constexpr std::array<point, NUM_POINTS> predefined_point_for_matching = {{
     {33, 0}, {17, -30}, {-17, -30}, {-33, 0}, {-17, 30}, {17, 30},
@@ -96,6 +99,7 @@ constexpr std::array<size_t, 512> PATCH_DESCRIPTION_POINTS =
 
 constexpr size_t DESCRIPTOR_SIZE = PATCH_DESCRIPTION_POINTS.size();
 
+#endif
 
 class FREAK_Parallel {
 public:

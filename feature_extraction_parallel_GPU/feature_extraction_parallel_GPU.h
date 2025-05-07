@@ -3,8 +3,8 @@
 //
 #pragma once
 
-#ifndef FEATURE_EXTRACTION_PARALLEL_H
-#define FEATURE_EXTRACTION_PARALLEL_H
+#ifndef FEATURE_EXTRACTION_PARALLEL_GPU_H
+#define FEATURE_EXTRACTION_PARALLEL_GPU_H
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -24,7 +24,7 @@
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 
 
-#ifndef CORNER_DETECTION_PARALLEL
+#ifndef CORNER_DETECTION_PARALLEL_GPU
 struct GPU_settings {
     cl::Program program;
     cl::Device device;
@@ -51,8 +51,8 @@ cl::Program create_platform_from_binary(const std::string &binary_filename);
 
 
 // std::vector<std::vector<uint8_t>> feature_extraction_manager(const cv::Mat& image);
-std::vector<std::vector<uint8_t>> feature_extraction_manager(const cv::Mat& image, const std::string& kerlen_filename);
-std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_extraction_manager_with_points(const cv::Mat& image, const std::string& kerlen_filename);
+std::vector<std::vector<uint8_t>> feature_extraction_manager(const cv::Mat& image, const GPU_settings& GPU_settings);
+std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_extraction_manager_with_points(const cv::Mat& image, const GPU_settings& GPU_settings);
 
 
-#endif //FEATURE_EXTRACTION_PARALLEL_H
+#endif //FEATURE_EXTRACTION_PARALLEL_GPU_H

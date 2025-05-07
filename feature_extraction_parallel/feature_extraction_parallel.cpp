@@ -281,6 +281,19 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
         return ay < by;
     });
 
+    // cv::Mat new_image;
+    // if (blurred.channels() == 1) cv::cvtColor(blurred, new_image, cv::COLOR_GRAY2BGR);
+    //
+    // for (auto coords : local_mins_shitomasi) {
+    //
+    //     // std::cout << "(" << std::get<0>(coords) << ", " << std::get<1>(coords) << ")" << std::endl;
+    //
+    //     cv::circle(new_image, cv::Point(coords.pt.x, coords.pt.y), 1, cv::Scalar(0, 0, 255), 3);
+    // }
+    // cv::imshow("GPU CORNERS", new_image);
+    // cv::waitKey(0);
+    // cv::destroyAllWindows();
+
     #ifdef VISUALIZATION
         for (auto coords : local_mins_shitomasi) {
 
@@ -304,6 +317,9 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
 
     size_t cur_index = 0;
     const size_t num_of_keypoints = local_mins_shitomasi.size();
+#ifdef INTERMEDIATE_TIME_MEASUREMENT
+    auto start_descriptor = get_current_time_fenced();
+#endif
 
     std::vector<std::vector<uint8_t>> descriptor(num_of_keypoints, std::vector<uint8_t>(DESCRIPTOR_SIZE));
 
@@ -323,7 +339,11 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
     for (auto &future : futures_descriptor) {
         future.get();
     }
-
+#ifdef INTERMEDIATE_TIME_MEASUREMENT
+    auto end_descriptor = get_current_time_fenced();
+    std::cout << "Threadpool descriptor calculations: " << std::chrono::duration_cast<std::chrono::milliseconds>(end_descriptor - start_descriptor).count()
+              << " ms" << std::endl;
+#endif
     return {descriptor, local_mins_shitomasi};
 
 }

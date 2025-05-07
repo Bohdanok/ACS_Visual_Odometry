@@ -9,15 +9,34 @@ typedef struct {
     point point2;
 } test;
 
-void atomic_add_float_global(__global float* p, float val) // stackoverflow
-{
-    asm volatile(
-        "atom.global.add.f32 _, [%0], %1;"  // "_" or omit output
-        :
-        : "l"(p), "f"(val)
-        : "memory"
-    );
+//typedef struct {
+//    int first;
+//    int second;
+//} pair;
+
+//void atomic_add_float_global(__global float* p, float val) // stackoverflow
+//{
+//    asm volatile(
+//        "atom.global.add.f32 _, [%0], %1;"  // "_" or omit output
+//        :
+//        : "l"(p), "f"(val)
+//        : "memory"
+//    );
+//}
+
+inline void atomic_add_float_global(__global float* source, float operand) { // chat
+    union {
+        unsigned int intVal;
+        float floatVal;
+    } next, expected, current;
+
+    do {
+        current.floatVal = *source;
+        next.floatVal = current.floatVal + operand;
+        expected.intVal = as_uint(current.floatVal);
+    } while (atomic_cmpxchg((volatile __global int*)source, expected.intVal, as_uint(next.floatVal)) != expected.intVal);
 }
+
 
 
 
@@ -50,6 +69,7 @@ __kernel void gradient_convolution(__global uchar* image_data,
         sumy[k + 1] = (float)(image_data[idx_m1 + k]) + 2.0f * (float)(image_data[idx + k]) + (float)(image_data[idx_p1 + k]); // [1, 2, 1] T
 
     }
+
 
     Jx[idx] = sumx[0] + 2.0f * sumx[1] + sumx[2]; // [1, 2, 1]
     Jy[idx]  = sumy[0] - sumy[2]; // [1, 0, -1]
@@ -89,7 +109,7 @@ __kernel void shitomasi_response(__global float* R_renponse,
 
     const float det = (jx2 * jy2) - (sumjxy * sumjxy);
     const float trace = jx2 + jy2;
-    const float R = (trace / 2) - (0.5 * sqrt(trace * trace - 4 * det));
+    const float R = (trace / 2) - (0.5f * sqrt(trace * trace - 4 * det));
 
     R_renponse[idx] = R > RESPONSE_THRESHOLD ? R : 0;
 //    R_renponse[idx] = 1000.0f * sin((float)(i + j) / 10.0f);
@@ -99,83 +119,107 @@ __kernel void shitomasi_response(__global float* R_renponse,
 
 }
 
-__kernel void compute_orientation(__global const uchar* image_data,
-                                  __global const test* test_cases,
-                                  __global float* O_x,
-                                  __global float* O_y,
-                                  __global point* key_points,
-                                  const int key_point_index,
-                                  const int width) {
-
-//	size_t i = get_global_id(1);
-//    size_t j = get_global_id(0); i = point1 <===> j = point2
-
-	const size_t id = get_global_id(0);
-
-	const float point1_intensity = (float)(image_data[(test_cases[id].point1.y + key_points[key_point_index].y) * width + test_cases[id].point1.x + key_points[key_point_index].x]);
-
-    const float intensity_change = point1_intensity - (float)(image_data[(test_cases[id].point2.y + key_points[key_point_index].y) * width + test_cases[id].point2.x  + key_points[key_point_index].x]);
 
 
-	// norm of 2 vectors
-     const double norm = sqrt(pow(test_cases[id].point1.y + key_points[key_point_index].y - test_cases[id].point2.y + key_points[key_point_index].y, 2.0) +
-         pow(test_cases[id].point1.x + key_points[key_point_index].x - test_cases[id].point2.x + key_points[key_point_index].x, 2.0) );
+__kernel void compute_all_orientations( __global uchar* image_data,
+    									__global const int* test_cases,
+    									__global float* O_x,
+    									__global float* O_y,
+    									__global int* key_points,
+    									const int width) {
+
+    const size_t key_point_id = get_global_id(0);
+    const size_t test_id = get_global_id(1);
+
+    const int key_x = key_points[2 * key_point_id + 0];
+    const int key_y = key_points[2 * key_point_id + 1];
+
+    const int p1_x = test_cases[4 * test_id + 0];
+    const int p1_y = test_cases[4 * test_id + 1];
+    const int p2_x = test_cases[4 * test_id + 2];
+    const int p2_y = test_cases[4 * test_id + 3];
+
+    const int x1 = p1_x + key_x;
+    const int y1 = p1_y + key_y;
+    const int x2 = p2_x + key_x;
+    const int y2 = p2_y + key_y;
+
+    const float intensity1 = (float)image_data[width * y1 + x1];
+    const float intensity2 = (float)image_data[width * y2 + x2];
+
+    const float intensity_change = intensity1 - intensity2;
 
 
-    atomic_add_float_global(O_x, intensity_change * (test_cases[id].point1.x - test_cases[id].point2.x) / norm);
-    atomic_add_float_global(O_y, intensity_change * (test_cases[id].point1.y - test_cases[id].point2.y) / norm);
+    const float dx = (float)(p1_x - p2_x);
+    const float dy = (float)(p1_y - p2_y);
+    const float norm = sqrt(dx * dx + dy * dy);
+
+    if (norm == 0.0f) return;
+
+    const float add_o_x = intensity_change * dx / norm;
+    const float add_o_y = intensity_change * dy / norm;
+
+    atomic_add_float_global(&O_x[key_point_id], add_o_x);
+    atomic_add_float_global(&O_y[key_point_id], add_o_y);
 
 
 }
 
-__kernel void merge_orientation_tasks(__global float* O_x,
+
+__kernel void merge_all_orientations(__global float* O_x,
                                       __global float* O_y,
                                       __global float* rotation_matrix) {
 
 //  	const float o_x = atomic_load(O_x);
 //	const float o_y = atomic_load(O_y);
+	const size_t key_point_id = get_global_id(0);
 
+    const float o_x = O_x[key_point_id];
+    const float o_y = O_y[key_point_id];
 
-    if (isnan(*O_x) || isnan(*O_y)) { // a check for isinf() might be useful here
-        const float angle = 0.0f;
+//	printf("O_x: %f\tO_y: %f\n", o_x, o_y);
+
+    float angle = 0.0f;
+
+    if (!(isnan(o_x) || isnan(o_y))) { // a check for isinf() might be useful here
+        angle = atan2(o_y, o_x);
     }
-    const float angle = atan2(*O_y, *O_x);
 
-    rotation_matrix[0] = cos(angle);
-    rotation_matrix[1] = -1.0f * sin(angle);
-    rotation_matrix[2] = sin(angle);
-    rotation_matrix[3] = cos(angle);
+//    printf("THE ANGLE: %f", angle);
 
-    *O_x = 0.0;
-    *O_y = 0.0;
+    rotation_matrix[4 * key_point_id] = cos(angle);
+    rotation_matrix[4 * key_point_id + 1] = -1.0f * sin(angle);
+    rotation_matrix[4 * key_point_id + 2] = sin(angle);
+    rotation_matrix[4 * key_point_id + 3] = cos(angle);
 
 }
 
-__kernel void compute_descriptor(__global uchar* descriptor,
+
+__kernel void compute_all_descriptors(__global uchar* descriptor,
                                  __global const uchar* image,
                                  __global const size_t* patch_description_points,
                                  __global point* key_points,
-                                  const int key_point_index,
                                  __global const float* rotation_matrix,
                                  __global const test* test_cases,
                                  const int width) {
 
-	const size_t id = get_global_id(0); // j
+	const size_t key_point_id = get_global_id(0); // i
+	const size_t desc_point_id = get_global_id(1); // j
 
-    const test cur_patch = test_cases[patch_description_points[id]];
+    const test cur_patch = test_cases[patch_description_points[desc_point_id]];
 
     const point pt1 = cur_patch.point1;
     const point pt2 = cur_patch.point2;
 
-    const point pnt1 = {(int)(key_points[key_point_index].x +
-        pt1.x * rotation_matrix[0] + pt1.y * rotation_matrix[2]),
-        (int)(key_points[key_point_index].y + (-1) * pt1.x * rotation_matrix[1] + pt1.y * rotation_matrix[3])};
+    const point pnt1 = {(int)(key_points[key_point_id].x +
+        pt1.x * rotation_matrix[key_point_id * 4 + 0] + pt1.y * rotation_matrix[key_point_id * 4 + 2]),
+        (int)(key_points[key_point_id].y + (-1) * pt1.x * rotation_matrix[key_point_id * 4 + 1] + pt1.y * rotation_matrix[key_point_id * 4 + 3])};
 
-    const point pnt2 = {(int)(key_points[key_point_index].x +
-        pt2.x * rotation_matrix[0] + pt2.y * rotation_matrix[2]),
-        (int)(key_points[key_point_index].y + (-1) * pt2.x * rotation_matrix[1] + pt2.y * rotation_matrix[3])};
+    const point pnt2 = {(int)(key_points[key_point_id].x +
+        pt2.x * rotation_matrix[key_point_id * 4 + 0] + pt2.y * rotation_matrix[key_point_id * 4 + 2]),
+        (int)(key_points[key_point_id].y + (-1) * pt2.x * rotation_matrix[key_point_id * 4 + 1] + pt2.y * rotation_matrix[key_point_id * 4 + 3])};
 
 
-    descriptor[key_point_index * 512 + id] = image[width * pnt1.y + pnt1.x] > image[width * pnt2.y + pnt2.x] ? 1 : 0;
-//	descriptor[key_point_index * 512 + id] = 69;
+    descriptor[key_point_id * 512 + desc_point_id] = image[width * pnt1.y + pnt1.x] > image[width * pnt2.y + pnt2.x] ? 1 : 0;
+//	descriptor[key_point_id * 512 + id] = 69;
 }

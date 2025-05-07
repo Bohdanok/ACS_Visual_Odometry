@@ -12,7 +12,7 @@
 
 
 
-#ifndef CORNER_DETECTION_PARALLEL
+#ifndef CORNER_DETECTION_PARALLEL_GPU
 struct GPU_settings {
     cl::Program program;
     cl::Device device;
@@ -28,14 +28,14 @@ get_current_time_fenced()
 }
 #endif
 // #ifndef CORNER_DETECTION
-struct point {
-    cl_int x, y;
-};
+// struct point {
+//     cl_int x, y;
+// };
 // #endif
 
-struct test {
-    point point1, point2;
-};
+// struct test {
+//     point point1, point2;
+// };
 
 // struct test {
 //     cv::KeyPoint point1, point2;
@@ -44,9 +44,7 @@ struct test {
 constexpr size_t NUM_POINTS = 43;
 constexpr size_t NUM_PAIRS = (NUM_POINTS * (NUM_POINTS - 1)) / 2;
 
-constexpr size_t KEY_POINTS_PER_TASK = 30;
-
-constexpr std::array<point, NUM_POINTS> predefined_point_for_matching = {{
+constexpr std::array<std::array<int, 2>, NUM_POINTS> predefined_point_for_matching = {{
     {33, 0}, {17, -30}, {-17, -30}, {-33, 0}, {-17, 30}, {17, 30},
     {22, 13}, {22, -13}, {0, -26}, {-22, -13}, {-22, 13}, {0, 26},
     {18, 0}, {9, -17}, {-9, -17}, {-18, 0}, {-9, 17}, {9, 17},
@@ -57,23 +55,33 @@ constexpr std::array<point, NUM_POINTS> predefined_point_for_matching = {{
     {0, 0}
 }};
 
-inline std::array<test, NUM_PAIRS> generate_tests() {
-    std::array<test, NUM_PAIRS> result{};
+inline std::array<std::array<std::array<int, 2>, 2>, NUM_PAIRS> generate_tests() {
+    std::array<std::array<std::array<int, 2>, 2>, NUM_PAIRS> result{};
     size_t index = 0;
 
-    for (size_t i = 0; i < NUM_POINTS; i++) {
-        for (size_t j = i + 1; j < NUM_POINTS; j++) {
-            // result[index++] = {cv::KeyPoint(cv::Point2f(static_cast<float>(predefined_point_for_matching[i].x), static_cast<float>(predefined_point_for_matching[i].y)), 1.0f),
-            //        cv::KeyPoint(cv::Point2f(static_cast<float>(predefined_point_for_matching[j].x), static_cast<float>(predefined_point_for_matching[j].y)), 1.0f)};
-            result[index++] = test{point{(predefined_point_for_matching[i].x, predefined_point_for_matching[i].y)},
-       point{predefined_point_for_matching[j].x, predefined_point_for_matching[j].y}};
+    for (size_t i = 0; i < predefined_point_for_matching.size(); i++) {
+        for (size_t j = i + 1; j < predefined_point_for_matching.size(); j++) {
+             result[index++] = {
+                 {
+                     { predefined_point_for_matching[i][0],
+                           predefined_point_for_matching[i][1] },
+                     { predefined_point_for_matching[j][0],
+                            predefined_point_for_matching[j][1] }
+                 }};
+            // result[index++] = test{
+            //            point{ -5,
+            //                  -5 },
+            //            point{ -5,
+            //                   -5 }
+            //       };
         }
     }
 
     return result;
 }
 
-static std::array<test, NUM_PAIRS> test_cases = generate_tests();
+
+static std::array<std::array<std::array<int, 2>, 2>, NUM_PAIRS> test_cases = generate_tests();
 
 
 constexpr std::array<size_t, 512> PATCH_DESCRIPTION_POINTS =

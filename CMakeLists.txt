@@ -19,6 +19,8 @@ set(BOHDAN_TEST bohdan_test)
 set(PROJECT_TEST_SERIAL_MATCHING serial_feature_extraction_with_matching)
 set(PRECOMPILE_THE_SOURCE precompile_the_source)
 
+set(TEST_FEATURE_EXTRACTION test_feature_extraction)
+
 add_executable(${PROJECT_FEATURE_EXTRACTION_WITH_MATCHING}
         feature_extraction/test_feature_extraction.cpp
         feature_extraction/corner_detection.cpp
@@ -94,6 +96,24 @@ target_include_directories(${PRECOMPILE_THE_SOURCE} PRIVATE ${OpenCV_INCLUDE_DIR
 target_link_libraries(${PRECOMPILE_THE_SOURCE} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
 
 
+add_executable(${TEST_FEATURE_EXTRACTION} test_feature_extraction.cpp
+
+        # Thread pool implementation
+        feature_extraction_parallel/corner_detection_parallel.cpp
+        feature_extraction_parallel/FREAK_feature_descriptor_parallel.cpp
+        feature_extraction_parallel/feature_extraction_parallel.cpp
+
+        # GPU implementation
+        feature_extraction_parallel_GPU/corner_detection_parallel_GPU.cpp
+        feature_extraction_parallel_GPU/FREAK_feature_descriptor_parallel_GPU.cpp
+        feature_extraction_parallel_GPU/feature_extraction_parallel_GPU.cpp
+)
+
+target_include_directories(${BOHDAN_TEST} PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(${BOHDAN_TEST} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
+
+
+
 
 add_custom_target(run_precompile_kernel
         COMMAND ${CMAKE_COMMAND} -E echo "Running kernel precompilation step"
@@ -105,3 +125,5 @@ add_custom_target(run_precompile_kernel
 add_dependencies(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} run_precompile_kernel)
 
 add_dependencies(${BOHDAN_TEST} run_precompile_kernel)
+
+add_dependencies(${TEST_FEATURE_EXTRACTION} run_precompile_kernel)

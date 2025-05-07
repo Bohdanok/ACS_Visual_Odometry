@@ -2,8 +2,8 @@
 // Created by julfy1 on 3/24/25.
 //
 #pragma once
-#ifndef CORNER_DETECTION_PARALLEL
-#define CORNER_DETECTION_PARALLEL
+#ifndef CORNER_DETECTION_PARALLEL_GPU
+#define CORNER_DETECTION_PARALLEL_GPU
 
 #include <opencv2/core.hpp>
 #include <string>
@@ -24,6 +24,27 @@ get_current_time_fenced()
 
 constexpr float RESPONSE_THRESHOLD = 25000;
 
+struct bound2d {
+    int start{}, end{};
+};
+
+struct interval {
+    bound2d cols, rows;
+};
+
+struct Candidate {
+    double score;
+    int i;
+    int j;
+
+    bool operator<(const Candidate& other) const {
+        return score > other.score;
+    }
+};
+
+using work_result = std::variant<bool, std::vector<cv::KeyPoint>, std::vector<std::vector<uint8_t>>>;
+
+
 struct GPU_settings {
     cl::Program program;
     cl::Device device;
@@ -41,8 +62,9 @@ public:
 
     static void shitomasi_corner_detection(const GPU_settings& gpu_settings, const cv::Mat& my_blurred_gray, std::vector<std::vector<float>>& R_score);
     static std::vector<cv::KeyPoint> non_maximum_suppression(const std::vector<std::vector<float>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N);
+    static std::vector<cv::KeyPoint> non_maximum_suppression_new(const std::vector<std::vector<float>> &R_values, const int& n_rows, const int& n_cols, const int& k, const int& N);
 
 
 };
 
-#endif // CORNER_DETECTION_PARALLEL
+#endif // CORNER_DETECTION_PARALLEL_GPU
