@@ -1,5 +1,0 @@
-/Users/sofiiapopeniuk/Documents/ACS_Visual_Odometry/build/CMakeFiles/feature_extraction_with_matching.dir
-/Users/sofiiapopeniuk/Documents/ACS_Visual_Odometry/build/CMakeFiles/test_parallel.dir
-/Users/sofiiapopeniuk/Documents/ACS_Visual_Odometry/build/CMakeFiles/parallel_feature_extraction_with_matching.dir
-/Users/sofiiapopeniuk/Documents/ACS_Visual_Odometry/build/CMakeFiles/edit_cache.dir
-/Users/sofiiapopeniuk/Documents/ACS_Visual_Odometry/build/CMakeFiles/rebuild_cache.dir
