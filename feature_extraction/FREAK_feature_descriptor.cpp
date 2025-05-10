@@ -44,7 +44,8 @@ std::vector<std::vector<uint8_t>> FREAK::FREAK_feature_description(const std::ve
 
         for (size_t j = 0; j < DESCRIPTOR_SIZE; j++) {
             // std::cout << "Key point: " << "(" << key_point.x << ", " << key_point.y << ")" << std::endl;
-            const auto cur_patch = test_cases[j];
+            // const auto cur_patch = test_cases[j];
+            const auto cur_patch = test_cases[PATCH_DESCRIPTION_POINTS[j]];
 
             const auto pt1 = cur_patch.point1;
             const auto pt2 = cur_patch.point2;

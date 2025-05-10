@@ -13,6 +13,19 @@
 
 #ifdef PARALLEL_IMPLEMENTATION
     #include "feature_extraction_parallel/feature_extraction_parallel.h"
+
+inline std::chrono::high_resolution_clock::time_point
+get_current_time_fenced()
+{
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    auto res_time = std::chrono::high_resolution_clock::now();
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    return res_time;
+}
+
+
+#elif  GPU_IMPLEMENTATION
+#include "feature_extraction_parallel_GPU/feature_extraction_parallel_GPU.h"
 #else
     #include "feature_extraction/test_feature_extraction.h"
 #endif
@@ -23,14 +36,15 @@
 constexpr int BINARY_DESCRIPTOR_SIZE = 32;
 constexpr double MATCH_THRESHOLD = 0.5;
 
-inline std::chrono::high_resolution_clock::time_point
-get_current_time_fenced()
-{
-    std::atomic_thread_fence(std::memory_order_seq_cst);
-    auto res_time = std::chrono::high_resolution_clock::now();
-    std::atomic_thread_fence(std::memory_order_seq_cst);
-    return res_time;
-}
+// inline std::chrono::high_resolution_clock::time_point
+// get_current_time_fenced()
+// {
+//     std::atomic_thread_fence(std::memory_order_seq_cst);
+//     auto res_time = std::chrono::high_resolution_clock::now();
+//     std::atomic_thread_fence(std::memory_order_seq_cst);
+//     return res_time;
+// }
+
 
 int hammingDistance(const uint8_t* d1, const uint8_t* d2, int length) {
     int distance = 0;
@@ -203,6 +217,25 @@ int main(int argc, char** argv) {
     BLOCK_SIZE = std::stoi(argv[4]);
 #endif
 
+#ifdef GPU_IMPLEMENTATION
+    size_t NUMBER_OF_THREADS = 16;
+    thread_pool pool1(NUMBER_OF_THREADS);
+    const std::string kernel_filename = "/home/julfy1/Documents/4th_term/ACS/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.bin";
+    const auto program = create_platform_from_binary(kernel_filename);
+
+    const auto devices = program.getInfo<CL_PROGRAM_DEVICES>();
+    const auto& device = devices.front(); // TODO Take the best device
+    const auto context = program.getInfo<CL_PROGRAM_CONTEXT>();
+
+    const GPU_settings GPU_settings({program, device, context});
+
+
+#endif
+
+
+    // std::vector<std::vector<uint8_t>> descs1 = descriptor_for_s_pop(argv[1]);
+    // std::vector<std::vector<uint8_t>> descs2 = descriptor_for_s_pop(argv[2]);
+
     auto start_feature_extraction = get_current_time_fenced();
 
 #ifdef PARALLEL_IMPLEMENTATION
@@ -212,19 +245,31 @@ int main(int argc, char** argv) {
     auto descs1 = feature_extraction_manager_with_points(image1, pool1);
     auto descs2 = feature_extraction_manager_with_points(image2, pool1);
 
+
+
+#elif GPU_IMPLEMENTATION
+    auto descs1 = feature_extraction_manager_with_points(img1, GPU_settings);
+    auto descs2 = feature_extraction_manager_with_points(img2, GPU_settings);
+
+
 #else
     auto descs1 = descriptor_with_points(argv[1]);
     auto descs2 = descriptor_with_points(argv[2]);
 #endif
 
+
     auto end_feature_extraction = get_current_time_fenced();
 
-    std::cout << "Number of keypoints: " << std::get<1>(descs1).size() << std::endl;
-    std::cout << "Number of keypoints: " << std::get<1>(descs2).size() << std::endl;
 
-    std::cout << "Time for feature extraction: "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end_feature_extraction - start_feature_extraction).count()
-              << " ms" << std::endl;
+
+ std::cout << "Number of keypoints: " << std::get<1>(descs1).size() << std::endl;
+ std::cout << "Number of keypoints: " << std::get<1>(descs2).size() << std::endl;
+
+
+ std::cout << "Time for feature extraction: "
+           << std::chrono::duration_cast<std::chrono::milliseconds>(end_feature_extraction - start_feature_extraction).count()
+           << " ms" << std::endl;
+
 
     std::vector<std::pair<int, int>> customMatches;
     auto start = get_current_time_fenced();
@@ -242,12 +287,73 @@ int main(int argc, char** argv) {
 
     std::cout << "Custom binary matches: " << customMatches.size() << std::endl;
 
+
+// #ifdef VISUALIZATION
+//     cv::Mat binaryMatchesImg;
+//     cv::drawMatches(img1, std::get<1>(descs1), img2, std::get<1>(descs2), convertToDMatch(customMatches), binaryMatchesImg);
+//     cv::imshow("FREAK Matches", binaryMatchesImg);
+//     cv::imwrite("FREAK_matches_not_changed.jpeg", binaryMatchesImg);
+//     cv::waitKey(0);
+// #endif
+
+
+
+
 #ifdef VISUALIZATION
-    cv::Mat binaryMatchesImg;
-    cv::drawMatches(img1, std::get<1>(descs1), img2, std::get<1>(descs2), convertToDMatch(customMatches), binaryMatchesImg);
-    cv::imshow("FREAK Matches", binaryMatchesImg);
+
+    std::vector<cv::Point2f> points1, points2;
+    for (const auto& match : customMatches) {
+        points1.push_back(std::get<1>(descs1)[match.first].pt);
+        points2.push_back(std::get<1>(descs2)[match.second].pt);
+    }
+
+
+    std::vector<unsigned char> inlierMask;
+    cv::Mat homography = cv::findHomography(points1, points2, cv::RANSAC, 1.0, inlierMask);
+
+  
+    int rows = std::max(img1.rows, img2.rows);
+    int cols = img1.cols + img2.cols;
+
+    cv::Mat inlierCanvas(rows, cols, CV_8UC3);
+    cv::Mat outlierCanvas(rows, cols, CV_8UC3);
+
+
+    if (img1.channels() == 1) cv::cvtColor(img1, img1, cv::COLOR_GRAY2BGR);
+    if (img2.channels() == 1) cv::cvtColor(img2, img2, cv::COLOR_GRAY2BGR);
+
+    img1.copyTo(inlierCanvas(cv::Rect(0, 0, img1.cols, img1.rows)));
+    img2.copyTo(inlierCanvas(cv::Rect(img1.cols, 0, img2.cols, img2.rows)));
+
+    img1.copyTo(outlierCanvas(cv::Rect(0, 0, img1.cols, img1.rows)));
+    img2.copyTo(outlierCanvas(cv::Rect(img1.cols, 0, img2.cols, img2.rows)));
+
+
+    int inlierCount = 0, outlierCount = 0;
+    for (size_t i = 0; i < customMatches.size(); ++i) {
+        cv::Point2f pt1 = std::get<1>(descs1)[customMatches[i].first].pt;
+        cv::Point2f pt2 = std::get<1>(descs2)[customMatches[i].second].pt + cv::Point2f((float)img1.cols, 0);
+
+        if (inlierMask[i]) {
+            inlierCount++;
+
+            cv::line(inlierCanvas, pt1, pt2, cv::Scalar(0, 255, 0), 1);
+        } else {
+            outlierCount++;
+
+            cv::line(outlierCanvas, pt1, pt2, cv::Scalar(0, 0, 255), 1);
+        }
+    }
+
+
+    std::cout << "RANSAC inliers: " << inlierCount << ", outliers: " << outlierCount<< std::endl;
+    cv::imshow("RANSAC Inliers (Green)", inlierCanvas);
+    cv::imshow("RANSAC Outliers (Red)", outlierCanvas);
+    cv::imwrite("inliers_green_lines.jpeg", inlierCanvas);
+    cv::imwrite("outliers_red_lines.jpeg", outlierCanvas);
     cv::waitKey(0);
 #endif
+
 
     return 0;
 }
