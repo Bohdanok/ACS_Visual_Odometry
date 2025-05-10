@@ -8,7 +8,7 @@
 #include <opencv2/highgui.hpp>
 
 // #define VISUALIZATION
-#define INTERMEDIATE_TIME_MEASUREMENT
+// #define INTERMEDIATE_TIME_MEASUREMENT
 
 inline std::chrono::high_resolution_clock::time_point
 get_current_time_fenced()

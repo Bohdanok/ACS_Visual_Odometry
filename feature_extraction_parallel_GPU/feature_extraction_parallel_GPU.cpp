@@ -9,7 +9,7 @@
 
 // #define VISUALIZATION
 // #define INTERMEDIATE_TIME_MEASUREMENTS
-#define INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
+// #define INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
 
 void print_descriptor(const std::vector<std::vector<uint8_t>>& descriptor){
     std::cout << "/////////////////////////////////////////////////////////////" << std::endl;

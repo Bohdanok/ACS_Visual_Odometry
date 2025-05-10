@@ -118,7 +118,7 @@ void FREAK_Parallel::FREAK_feature_description_worker(const std::vector<cv::KeyP
         const float angle = compute_orientation(key_point , blurred_gray_picture);
         const float rotation_matrix[4] = {std::cos(angle), -1 * std::sin(angle), std::sin(angle), std::cos(angle)};
 
-        std::cout << "Angle1: " << angle << "\t[ " << rotation_matrix[0] << ", " << rotation_matrix[1] << ", " << rotation_matrix[2] << ", " << rotation_matrix[3] << "]" << std::endl;
+        // std::cout << "Angle1: " << angle << "\t[ " << rotation_matrix[0] << ", " << rotation_matrix[1] << ", " << rotation_matrix[2] << ", " << rotation_matrix[3] << "]" << std::endl;
 
 
         for (size_t j = 0; j < DESCRIPTOR_SIZE; j++) {
