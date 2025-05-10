@@ -17,7 +17,11 @@ set(PROJECT_PARALLEL_FEATURE_EXTRACTION_WITH_MATCHING parallel_feature_extractio
 set(PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING GPU_parallel_feature_extraction_with_matching)
 set(BOHDAN_TEST bohdan_test)
 set(PROJECT_TEST_SERIAL_MATCHING serial_feature_extraction_with_matching)
+
 set(PRECOMPILE_THE_SOURCE precompile_the_source)
+
+set(VISUAL_ODOMETRY visual_odometry)
+
 
 set(TEST_FEATURE_EXTRACTION test_feature_extraction)
 
@@ -83,6 +87,7 @@ target_link_libraries(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} P
 target_compile_definitions(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE GPU_IMPLEMENTATION)
 
 
+
 add_executable(${BOHDAN_TEST}
         test_opencl.cpp)
 
@@ -127,3 +132,18 @@ add_dependencies(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} run_pr
 add_dependencies(${BOHDAN_TEST} run_precompile_kernel)
 
 add_dependencies(${TEST_FEATURE_EXTRACTION} run_precompile_kernel)
+
+find_package(OpenCL REQUIRED)
+target_link_libraries(${BOHDAN_TEST}  OpenCL::OpenCL)
+
+
+add_executable(${VISUAL_ODOMETRY}
+        feature_extraction_parallel/corner_detection_parallel.cpp
+        feature_extraction_parallel/FREAK_feature_descriptor_parallel.cpp
+        feature_extraction_parallel/feature_extraction_parallel.cpp
+        feature_matching_parallel/feature_matching_parallel.cpp
+        VisualOdometry.cpp)
+
+target_include_directories(${VISUAL_ODOMETRY} PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(${VISUAL_ODOMETRY} PRIVATE ${OpenCV_LIBS})
+
