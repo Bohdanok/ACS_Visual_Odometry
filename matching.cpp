@@ -1,4 +1,4 @@
-#include "feature_extraction_parallel/threadpool.h"
+
 #include <iostream>
 #include <vector>
 #include <unordered_set>
@@ -7,9 +7,9 @@
 #include <thread>
 #include <future>
 #include <opencv2/opencv.hpp>
-#include <optional>
 #include <opencv2/features2d.hpp>
-#include <opencv2/xfeatures2d.hpp>
+
+// #include <opencv2/xfeatures2d.hpp>
 
 #ifdef PARALLEL_IMPLEMENTATION
     #include "feature_extraction_parallel/feature_extraction_parallel.h"
@@ -45,7 +45,6 @@ constexpr double MATCH_THRESHOLD = 0.5;
 //     return res_time;
 // }
 
-
 int hammingDistance(const uint8_t* d1, const uint8_t* d2, int length) {
     int distance = 0;
     int i = 0;
@@ -64,6 +63,62 @@ int hammingDistance(const uint8_t* d1, const uint8_t* d2, int length) {
     return distance;
 }
 
+std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsParallel(
+    const std::vector<std::vector<uint8_t>>& desc1,
+    const std::vector<std::vector<uint8_t>>& desc2,
+    float ratioThreshold = 0.75f,
+    int numThreads = std::thread::hardware_concurrency())
+{
+    std::vector<std::pair<int, int>> allMatches;
+    if (desc1.empty() || desc2.empty()) return allMatches;
+
+    int descriptorLength = desc1[0].size();
+    size_t total = desc1.size();
+    size_t chunkSize = (total + numThreads - 1) / numThreads;
+
+    std::vector<std::future<std::vector<std::pair<int, int>>>> futures;
+
+    for (int t = 0; t < numThreads; ++t) {
+        size_t startIdx = t * chunkSize;
+        size_t endIdx = std::min(startIdx + chunkSize, total);
+
+        futures.emplace_back(std::async(std::launch::async, [&, startIdx, endIdx]() {
+            std::vector<std::pair<int, int>> localMatches;
+            for (size_t i = startIdx; i < endIdx; ++i) {
+                int bestIdx = -1, secondBestIdx = -1;
+                int bestDist = std::numeric_limits<int>::max();
+                int secondBestDist = std::numeric_limits<int>::max();
+
+                for (size_t j = 0; j < desc2.size(); ++j) {
+                    int dist = hammingDistance(desc1[i].data(), desc2[j].data(), descriptorLength);
+                    if (dist < bestDist) {
+                        secondBestDist = bestDist;
+                        secondBestIdx = bestIdx;
+                        bestDist = dist;
+                        bestIdx = j;
+                    } else if (dist < secondBestDist) {
+                        secondBestDist = dist;
+                        secondBestIdx = j;
+                    }
+                }
+
+                if (bestIdx != -1 && secondBestIdx != -1 &&
+                    bestDist < ratioThreshold * secondBestDist) {
+                    localMatches.emplace_back(i, bestIdx);
+                }
+            }
+            return localMatches;
+        }));
+    }
+
+    for (auto& f : futures) {
+        auto result = f.get();
+        allMatches.insert(allMatches.end(), result.begin(), result.end());
+    }
+
+    return allMatches;
+}
+
 std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
     const std::vector<std::vector<uint8_t>>& desc1,
     const std::vector<std::vector<uint8_t>>& desc2,
@@ -76,11 +131,12 @@ std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
 
     const int descriptorLength = desc1[0].size();
     const size_t total = desc1.size();
-    const size_t chunkSize = (total + numThreads - 1) / numThreads;
+    const int blocks = numThreads;  // simpler for now
+    const size_t chunkSize = (total + blocks - 1) / blocks;
 
     std::vector<std::future<std::vector<std::pair<int, int>>>> futures;
 
-    for (int t = 0; t < numThreads; ++t) {
+    for (int t = 0; t < blocks; ++t) {
         size_t startIdx = t * chunkSize;
         size_t endIdx = std::min(startIdx + chunkSize, total);
         if (startIdx >= total) break;
@@ -191,9 +247,6 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    int NUMBER_OF_THREADS = std::stoi(argv[3]);
-    thread_pool pool1(NUMBER_OF_THREADS);
-
     cv::Mat img1 = cv::imread(argv[1], cv::IMREAD_GRAYSCALE);
     cv::Mat img2 = cv::imread(argv[2], cv::IMREAD_GRAYSCALE);
 
@@ -214,7 +267,12 @@ int main(int argc, char** argv) {
         return -69;
     }
 
+    NUMBER_OF_THREADS = std::stoi(argv[3]);
     BLOCK_SIZE = std::stoi(argv[4]);
+
+    // std::cout << "Number of threads: " << NUMBER_OF_THREADS << std::endl;
+    // std::cout << "Block size: " << BLOCK_SIZE << std::endl;
+
 #endif
 
 #ifdef GPU_IMPLEMENTATION
@@ -235,28 +293,33 @@ int main(int argc, char** argv) {
 
     // std::vector<std::vector<uint8_t>> descs1 = descriptor_for_s_pop(argv[1]);
     // std::vector<std::vector<uint8_t>> descs2 = descriptor_for_s_pop(argv[2]);
-
     auto start_feature_extraction = get_current_time_fenced();
 
 #ifdef PARALLEL_IMPLEMENTATION
     cv::Mat image1 = cv::imread(argv[1]);
     cv::Mat image2 = cv::imread(argv[2]);
 
+    thread_pool pool1(NUMBER_OF_THREADS);
+    // thread_pool pool2(NUMBER_OF_THREADS);
+
     auto descs1 = feature_extraction_manager_with_points(image1, pool1);
     auto descs2 = feature_extraction_manager_with_points(image2, pool1);
 
+    // print_descriptor(descs1.first);
 
 
 #elif GPU_IMPLEMENTATION
     auto descs1 = feature_extraction_manager_with_points(img1, GPU_settings);
     auto descs2 = feature_extraction_manager_with_points(img2, GPU_settings);
 
+    // print_descriptor(descs1.first);
 
 #else
     auto descs1 = descriptor_with_points(argv[1]);
     auto descs2 = descriptor_with_points(argv[2]);
 #endif
 
+    // print_descriptor(descs1.first);
 
     auto end_feature_extraction = get_current_time_fenced();
 
@@ -279,14 +342,17 @@ int main(int argc, char** argv) {
     	pool1,
     	NUMBER_OF_THREADS
 	);
+
     auto end = get_current_time_fenced();
+
+    // std::cout <<
 
     std::cout << "Time for matching: "
               << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
               << " ms" << std::endl;
 
-    std::cout << "Custom binary matches: " << customMatches.size() << std::endl;
 
+    std::cout << "Custom binary matches: " << customMatches.size() << std::endl;
 
 // #ifdef VISUALIZATION
 //     cv::Mat binaryMatchesImg;
@@ -297,28 +363,26 @@ int main(int argc, char** argv) {
 // #endif
 
 
-
-
 #ifdef VISUALIZATION
-
+    // Step 1: Extract matched keypoints
     std::vector<cv::Point2f> points1, points2;
     for (const auto& match : customMatches) {
         points1.push_back(std::get<1>(descs1)[match.first].pt);
         points2.push_back(std::get<1>(descs2)[match.second].pt);
     }
 
-
+    // Step 2: Run RANSAC
     std::vector<unsigned char> inlierMask;
     cv::Mat homography = cv::findHomography(points1, points2, cv::RANSAC, 1.0, inlierMask);
 
-  
+    // Step 3: Create side-by-side canvas
     int rows = std::max(img1.rows, img2.rows);
     int cols = img1.cols + img2.cols;
 
     cv::Mat inlierCanvas(rows, cols, CV_8UC3);
     cv::Mat outlierCanvas(rows, cols, CV_8UC3);
 
-
+    // Convert grayscale to color if needed
     if (img1.channels() == 1) cv::cvtColor(img1, img1, cv::COLOR_GRAY2BGR);
     if (img2.channels() == 1) cv::cvtColor(img2, img2, cv::COLOR_GRAY2BGR);
 
@@ -328,7 +392,7 @@ int main(int argc, char** argv) {
     img1.copyTo(outlierCanvas(cv::Rect(0, 0, img1.cols, img1.rows)));
     img2.copyTo(outlierCanvas(cv::Rect(img1.cols, 0, img2.cols, img2.rows)));
 
-
+    // Step 4: Draw lines
     int inlierCount = 0, outlierCount = 0;
     for (size_t i = 0; i < customMatches.size(); ++i) {
         cv::Point2f pt1 = std::get<1>(descs1)[customMatches[i].first].pt;
@@ -336,16 +400,16 @@ int main(int argc, char** argv) {
 
         if (inlierMask[i]) {
             inlierCount++;
-
+            // Green line for inlier
             cv::line(inlierCanvas, pt1, pt2, cv::Scalar(0, 255, 0), 1);
         } else {
             outlierCount++;
-
+            // Red line for outlier
             cv::line(outlierCanvas, pt1, pt2, cv::Scalar(0, 0, 255), 1);
         }
     }
 
-
+    // Step 5: Show and save
     std::cout << "RANSAC inliers: " << inlierCount << ", outliers: " << outlierCount<< std::endl;
     cv::imshow("RANSAC Inliers (Green)", inlierCanvas);
     cv::imshow("RANSAC Outliers (Red)", outlierCanvas);
@@ -355,5 +419,6 @@ int main(int argc, char** argv) {
 #endif
 
 
+    std::cout << "HI there!" << std::endl;
     return 0;
 }

@@ -15,7 +15,6 @@ set(PROJECT_SERIAL_FEATURE_EXTRACTION test_serial)
 set(PROJECT_PARALLEL_FEATURE_EXTRACTION test_parallel)
 set(PROJECT_PARALLEL_FEATURE_EXTRACTION_WITH_MATCHING parallel_feature_extraction_with_matching)
 set(PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING GPU_parallel_feature_extraction_with_matching)
-set(BOHDAN_TEST bohdan_test)
 set(PROJECT_TEST_SERIAL_MATCHING serial_feature_extraction_with_matching)
 
 set(PRECOMPILE_THE_SOURCE precompile_the_source)
@@ -88,12 +87,6 @@ target_compile_definitions(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHI
 
 
 
-add_executable(${BOHDAN_TEST}
-        test_opencl.cpp)
-
-target_include_directories(${BOHDAN_TEST} PRIVATE ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(${BOHDAN_TEST} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
-
 add_executable(${PRECOMPILE_THE_SOURCE}
         feature_extraction_parallel_GPU/precompile_kernel_source_code.cpp)
 
@@ -114,9 +107,6 @@ add_executable(${TEST_FEATURE_EXTRACTION} test_feature_extraction.cpp
         feature_extraction_parallel_GPU/feature_extraction_parallel_GPU.cpp
 )
 
-target_include_directories(${BOHDAN_TEST} PRIVATE ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(${BOHDAN_TEST} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
-
 
 
 
@@ -129,12 +119,10 @@ add_custom_target(run_precompile_kernel
 
 add_dependencies(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} run_precompile_kernel)
 
-add_dependencies(${BOHDAN_TEST} run_precompile_kernel)
 
 add_dependencies(${TEST_FEATURE_EXTRACTION} run_precompile_kernel)
 
 find_package(OpenCL REQUIRED)
-target_link_libraries(${BOHDAN_TEST}  OpenCL::OpenCL)
 
 
 add_executable(${VISUAL_ODOMETRY}
