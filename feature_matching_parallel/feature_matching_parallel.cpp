@@ -1,7 +1,3 @@
-//
-// Created by julfy on 20.04.25.
-//
-
 #include "feature_matching_parallel.h"
 
 
@@ -30,8 +26,9 @@
 
 // #define VISUALIZATION
 
-
-
+std::size_t PairHash::operator()(const std::pair<int, int>& p) const {
+    return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 1);
+}
 
 inline std::chrono::high_resolution_clock::time_point
 get_current_time_fenced()
@@ -42,30 +39,23 @@ get_current_time_fenced()
     return res_time;
 }
 
-int hammingDistance(const uint8_t* d1, const uint8_t* d2, int length) {
-    int distance = 0;
-    int i = 0;
+inline int hammingDistance(const uint8_t* d1, const uint8_t* d2) {
+    const uint64_t* a = reinterpret_cast<const uint64_t*>(d1);
+    const uint64_t* b = reinterpret_cast<const uint64_t*>(d2);
 
-    for (; i + 4 <= length; i += 4) {
-        uint32_t v1, v2;
-        std::memcpy(&v1, d1 + i, sizeof(uint32_t));
-        std::memcpy(&v2, d2 + i, sizeof(uint32_t));
-        distance += __builtin_popcount(v1 ^ v2);
-    }
-
-    for (; i < length; ++i) {
-        distance += __builtin_popcount(d1[i] ^ d2[i]);
-    }
-
-    return distance;
+    return __builtin_popcountll(a[0] ^ b[0]) +
+           __builtin_popcountll(a[1] ^ b[1]) +
+           __builtin_popcountll(a[2] ^ b[2]) +
+           __builtin_popcountll(a[3] ^ b[3]);
 }
+
 
 std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
     const std::vector<std::vector<uint8_t>>& desc1,
     const std::vector<std::vector<uint8_t>>& desc2,
     thread_pool& pool,
-    const int numThreads,
-    const float ratioThreshold)
+    int numThreads,
+    float ratioThreshold = 0.75f)
 {
     std::vector<std::pair<int, int>> allMatches;
     if (desc1.empty() || desc2.empty()) return allMatches;
@@ -91,7 +81,7 @@ std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
                 int secondBestDist = std::numeric_limits<int>::max();
 
                 for (size_t j = 0; j < desc2.size(); ++j) {
-                    int dist = hammingDistance(desc1[i].data(), desc2[j].data(), descriptorLength);
+                    int dist = hammingDistance(desc1[i].data(), desc2[j].data());
                     if (dist < bestDist) {
                         secondBestDist = bestDist;
                         secondBestIdx = bestIdx;
@@ -122,8 +112,6 @@ std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
 
     return allMatches;
 }
-
-
 
 std::vector<std::pair<int, int>> findCommonMatches(
     const std::vector<std::pair<int, int>>& customMatches,
@@ -174,4 +162,3 @@ std::vector<cv::DMatch> applyRANSAC(
     }
     return filteredMatches;
 }
-
