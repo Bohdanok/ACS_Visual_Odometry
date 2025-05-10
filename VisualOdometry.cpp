@@ -10,7 +10,6 @@ VisualOdometry::VisualOdometry(
   : VO_pool(num_threads)
   , number_of_threads(num_threads)
   , gpu_settings([&]() {
-      // load binary and create OpenCL program
       const auto program = create_platform_from_binary(kernel_filename);
       const auto devices = program.getInfo<CL_PROGRAM_DEVICES>();
       if (devices.empty()) {
