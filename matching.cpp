@@ -305,7 +305,6 @@ int main(int argc, char** argv) {
     auto descs1 = feature_extraction_manager_with_points(image1, pool1);
     auto descs2 = feature_extraction_manager_with_points(image2, pool1);
 
-    // print_descriptor(descs1.first);
 
 
 #elif GPU_IMPLEMENTATION
@@ -319,7 +318,6 @@ int main(int argc, char** argv) {
     auto descs2 = descriptor_with_points(argv[2]);
 #endif
 
-    // print_descriptor(descs1.first);
 
     auto end_feature_extraction = get_current_time_fenced();
 
@@ -345,8 +343,6 @@ int main(int argc, char** argv) {
 
     auto end = get_current_time_fenced();
 
-    // std::cout <<
-
     std::cout << "Time for matching: "
               << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
               << " ms" << std::endl;
@@ -364,25 +360,21 @@ int main(int argc, char** argv) {
 
 
 #ifdef VISUALIZATION
-    // Step 1: Extract matched keypoints
     std::vector<cv::Point2f> points1, points2;
     for (const auto& match : customMatches) {
         points1.push_back(std::get<1>(descs1)[match.first].pt);
         points2.push_back(std::get<1>(descs2)[match.second].pt);
     }
 
-    // Step 2: Run RANSAC
     std::vector<unsigned char> inlierMask;
     cv::Mat homography = cv::findHomography(points1, points2, cv::RANSAC, 1.0, inlierMask);
 
-    // Step 3: Create side-by-side canvas
     int rows = std::max(img1.rows, img2.rows);
     int cols = img1.cols + img2.cols;
 
     cv::Mat inlierCanvas(rows, cols, CV_8UC3);
     cv::Mat outlierCanvas(rows, cols, CV_8UC3);
 
-    // Convert grayscale to color if needed
     if (img1.channels() == 1) cv::cvtColor(img1, img1, cv::COLOR_GRAY2BGR);
     if (img2.channels() == 1) cv::cvtColor(img2, img2, cv::COLOR_GRAY2BGR);
 
@@ -392,7 +384,6 @@ int main(int argc, char** argv) {
     img1.copyTo(outlierCanvas(cv::Rect(0, 0, img1.cols, img1.rows)));
     img2.copyTo(outlierCanvas(cv::Rect(img1.cols, 0, img2.cols, img2.rows)));
 
-    // Step 4: Draw lines
     int inlierCount = 0, outlierCount = 0;
     for (size_t i = 0; i < customMatches.size(); ++i) {
         cv::Point2f pt1 = std::get<1>(descs1)[customMatches[i].first].pt;
@@ -400,16 +391,13 @@ int main(int argc, char** argv) {
 
         if (inlierMask[i]) {
             inlierCount++;
-            // Green line for inlier
             cv::line(inlierCanvas, pt1, pt2, cv::Scalar(0, 255, 0), 1);
         } else {
             outlierCount++;
-            // Red line for outlier
             cv::line(outlierCanvas, pt1, pt2, cv::Scalar(0, 0, 255), 1);
         }
     }
 
-    // Step 5: Show and save
     std::cout << "RANSAC inliers: " << inlierCount << ", outliers: " << outlierCount<< std::endl;
     cv::imshow("RANSAC Inliers (Green)", inlierCanvas);
     cv::imshow("RANSAC Outliers (Red)", outlierCanvas);
@@ -418,7 +406,5 @@ int main(int argc, char** argv) {
     cv::waitKey(0);
 #endif
 
-
-    std::cout << "HI there!" << std::endl;
     return 0;
 }
