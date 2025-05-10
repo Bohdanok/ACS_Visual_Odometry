@@ -9,7 +9,10 @@ find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 add_executable(main
-        test_pose_estimation.cpp
-        test_pose_estimation.cpp)
+        test_pose_estimation.cpp PoseUpdate.cpp)
+
+add_executable(estimate_dataset
+        main.cpp PoseUpdate.cpp)
 
 target_link_libraries(main ${OpenCV_LIBS})
+target_link_libraries(estimate_dataset ${OpenCV_LIBS})
