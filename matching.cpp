@@ -21,9 +21,6 @@
 
 // #define VISUALIZATION
 
-constexpr int BINARY_DESCRIPTOR_SIZE = 32;
-constexpr double MATCH_THRESHOLD = 0.5;
-
 inline std::chrono::high_resolution_clock::time_point
 get_current_time_fenced()
 {
@@ -31,6 +28,22 @@ get_current_time_fenced()
     auto res_time = std::chrono::high_resolution_clock::now();
     std::atomic_thread_fence(std::memory_order_seq_cst);
     return res_time;
+}
+
+cv::Mat convertToCvDescriptorsMatrix(const std::vector<std::vector<uint8_t>>& customDescriptors) {
+    // Ensure descriptors are in the correct format for BFMatcher: a cv::Mat with descriptors as rows
+    int numDescriptors = customDescriptors.size();
+    if (numDescriptors == 0) return cv::Mat(); // Empty case
+    
+    int descriptorLength = customDescriptors[0].size();
+    
+    cv::Mat descriptors(numDescriptors, descriptorLength, CV_8UC1);
+    
+    for (int i = 0; i < numDescriptors; i++) {
+        std::memcpy(descriptors.ptr(i), customDescriptors[i].data(), descriptorLength);
+    }
+    
+    return descriptors;
 }
 
 int main(int argc, char** argv) {
@@ -94,7 +107,8 @@ int main(int argc, char** argv) {
     	std::get<0>(descs1),
     	std::get<0>(descs2),
     	pool1,
-    	NUMBER_OF_THREADS
+    	NUMBER_OF_THREADS,
+        0.75f
 	);
     auto end = get_current_time_fenced();
 

@@ -24,28 +24,14 @@ constexpr double MATCH_THRESHOLD = 0.5;
 
 inline std::chrono::high_resolution_clock::time_point get_current_time_fenced();
 
-int hammingDistance(const uint8_t* d1, const uint8_t* d2, int length);
-
-std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsParallel(
-    const std::vector<std::vector<uint8_t>>& desc1,
-    const std::vector<std::vector<uint8_t>>& desc2,
-    const float ratioThreshold = 0.75f,
-    const int numThreads = std::thread::hardware_concurrency()
-);
+inline int hammingDistance(const uint8_t* d1, const uint8_t* d2);
 
 std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
     const std::vector<std::vector<uint8_t>>& desc1,
     const std::vector<std::vector<uint8_t>>& desc2,
     thread_pool& pool,
-    const int numThreads,
-    const float ratioThreshold
-);
-
-std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool_v2(
-    const std::vector<std::vector<uint8_t>>& desc1,
-    const std::vector<std::vector<uint8_t>>& desc2,
-    thread_pool& pool,
-    const float ratioThreshold = 0.75f
+    int numThreads,
+    float ratioThreshold
 );
 
 struct PairHash {

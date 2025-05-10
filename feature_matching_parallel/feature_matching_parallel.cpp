@@ -26,6 +26,10 @@
 
 // #define VISUALIZATION
 
+std::size_t PairHash::operator()(const std::pair<int, int>& p) const {
+    return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 1);
+}
+
 inline std::chrono::high_resolution_clock::time_point
 get_current_time_fenced()
 {
@@ -108,13 +112,6 @@ std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
 
     return allMatches;
 }
-
-
-struct PairHash {
-    std::size_t operator()(const std::pair<int, int>& p) const {
-        return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 1);
-    }
-};
 
 std::vector<std::pair<int, int>> findCommonMatches(
     const std::vector<std::pair<int, int>>& customMatches,
