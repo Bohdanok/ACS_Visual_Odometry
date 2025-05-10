@@ -57,78 +57,81 @@ target_include_directories(${PROJECT_PARALLEL_FEATURE_EXTRACTION_WITH_MATCHING} 
 target_link_libraries(${PROJECT_PARALLEL_FEATURE_EXTRACTION_WITH_MATCHING} PRIVATE ${OpenCV_LIBS})
 target_compile_definitions(${PROJECT_PARALLEL_FEATURE_EXTRACTION_WITH_MATCHING} PRIVATE PARALLEL_IMPLEMENTATION)
 
-# add_executable(${PROJECT_SERIAL_FEATURE_EXTRACTION}
-#         feature_extraction/corner_detection.cpp
-#         feature_extraction/FREAK_feature_descriptor.cpp
-#         feature_extraction/test_feature_extraction.cpp)
+add_executable(${PROJECT_SERIAL_FEATURE_EXTRACTION}
+        feature_extraction/corner_detection.cpp
+        feature_extraction/FREAK_feature_descriptor.cpp
+        feature_extraction/test_feature_extraction.cpp)
 
-# target_include_directories(${PROJECT_SERIAL_FEATURE_EXTRACTION} PRIVATE ${OpenCV_INCLUDE_DIRS})
-# target_link_libraries(${PROJECT_SERIAL_FEATURE_EXTRACTION} PRIVATE ${OpenCV_LIBS})
+target_include_directories(${PROJECT_SERIAL_FEATURE_EXTRACTION} PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_SERIAL_FEATURE_EXTRACTION} PRIVATE ${OpenCV_LIBS})
 
-# add_executable(${PROJECT_TEST_SERIAL_MATCHING}
-#         feature_extraction/test_feature_extraction.cpp
-#         feature_extraction/corner_detection.cpp
-#         feature_extraction/FREAK_feature_descriptor.cpp
-#         matching_serial.cpp)
+add_executable(${PROJECT_TEST_SERIAL_MATCHING}
+        feature_extraction/test_feature_extraction.cpp
+        feature_extraction/corner_detection.cpp
+        feature_extraction/FREAK_feature_descriptor.cpp
+        matching_serial.cpp)
 
-# target_include_directories(${PROJECT_TEST_SERIAL_MATCHING} PRIVATE ${OpenCV_INCLUDE_DIRS})
-# target_link_libraries(${PROJECT_TEST_SERIAL_MATCHING} PRIVATE ${OpenCV_LIBS})
+target_include_directories(${PROJECT_TEST_SERIAL_MATCHING} PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_TEST_SERIAL_MATCHING} PRIVATE ${OpenCV_LIBS})
 
 # ////////////////////////
 
-# add_executable(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING}
-#         feature_extraction_parallel_GPU/corner_detection_parallel_GPU.cpp
-#         feature_extraction_parallel_GPU/FREAK_feature_descriptor_parallel_GPU.cpp
-#         feature_extraction_parallel_GPU/feature_extraction_parallel_GPU.cpp
-#          matching.cpp
-# )
+add_executable(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING}
+        feature_extraction_parallel_GPU/corner_detection_parallel_GPU.cpp
+        feature_extraction_parallel_GPU/FREAK_feature_descriptor_parallel_GPU.cpp
+        feature_extraction_parallel_GPU/feature_extraction_parallel_GPU.cpp
+        feature_matching_parallel/feature_matching_parallel.cpp
+        matching.cpp
+)
 
-# target_include_directories(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE ${OpenCV_INCLUDE_DIRS})
-# target_link_libraries(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
-# target_compile_definitions(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE GPU_IMPLEMENTATION)
-
-
-
-# add_executable(${PRECOMPILE_THE_SOURCE}
-#         feature_extraction_parallel_GPU/precompile_kernel_source_code.cpp)
-
-# target_include_directories(${PRECOMPILE_THE_SOURCE} PRIVATE ${OpenCV_INCLUDE_DIRS})
-# target_link_libraries(${PRECOMPILE_THE_SOURCE} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
-
-# add_executable( VisualOdometry
-
-#         # FEATURE EXTRACTION
-#         feature_extraction_parallel_GPU/corner_detection_parallel_GPU.cpp
-#         feature_extraction_parallel_GPU/FREAK_feature_descriptor_parallel_GPU.cpp
-#         feature_extraction_parallel_GPU/feature_extraction_parallel_GPU.cpp
-
-#         VisualOdometry.cpp
-
-#         main.cpp
-
-# )
-
-# target_include_directories(VisualOdometry PRIVATE ${OpenCV_INCLUDE_DIRS})
-# target_link_libraries(VisualOdometry PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
-# target_compile_definitions(VisualOdometry PRIVATE GPU_IMPLEMENTATION)
+target_include_directories(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
+target_compile_definitions(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} PRIVATE GPU_IMPLEMENTATION)
 
 
 
+add_executable(${PRECOMPILE_THE_SOURCE}
+        feature_extraction_parallel_GPU/precompile_kernel_source_code.cpp)
+
+target_include_directories(${PRECOMPILE_THE_SOURCE} PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(${PRECOMPILE_THE_SOURCE} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
+
+add_executable( VisualOdometry
+
+        # FEATURE EXTRACTION
+        feature_extraction_parallel_GPU/corner_detection_parallel_GPU.cpp
+        feature_extraction_parallel_GPU/FREAK_feature_descriptor_parallel_GPU.cpp
+        feature_extraction_parallel_GPU/feature_extraction_parallel_GPU.cpp
+
+        feature_matching_parallel/feature_matching_parallel.cpp
+
+        VisualOdometry.cpp
+
+        main.cpp
+
+)
+
+target_include_directories(VisualOdometry PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(VisualOdometry PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
+target_compile_definitions(VisualOdometry PRIVATE GPU_IMPLEMENTATION)
 
 
-# add_custom_target(run_precompile_kernel
-#         COMMAND ${CMAKE_COMMAND} -E echo "Running kernel precompilation step"
-#         COMMAND $<TARGET_FILE:${PRECOMPILE_THE_SOURCE}>
-#         DEPENDS ${PRECOMPILE_THE_SOURCE}
-#         COMMENT "Running ${PRECOMPILE_THE_SOURCE} to generate kernel binary"
-# )
-
-# add_dependencies(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} run_precompile_kernel)
-
-# add_dependencies(VisualOdometry run_precompile_kernel)
 
 
-# find_package(OpenCL REQUIRED)
+
+add_custom_target(run_precompile_kernel
+        COMMAND ${CMAKE_COMMAND} -E echo "Running kernel precompilation step"
+        COMMAND $<TARGET_FILE:${PRECOMPILE_THE_SOURCE}>
+        DEPENDS ${PRECOMPILE_THE_SOURCE}
+        COMMENT "Running ${PRECOMPILE_THE_SOURCE} to generate kernel binary"
+)
+
+add_dependencies(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} run_precompile_kernel)
+
+add_dependencies(VisualOdometry run_precompile_kernel)
+
+
+find_package(OpenCL REQUIRED)
 
 #
 #add_executable(${VISUAL_ODOMETRY}
@@ -149,4 +152,3 @@ target_compile_definitions(${PROJECT_PARALLEL_FEATURE_EXTRACTION_WITH_MATCHING} 
 #
 #target_link_libraries(main ${OpenCV_LIBS})
 #target_link_libraries(estimate_dataset ${OpenCV_LIBS})
-
