@@ -135,3 +135,12 @@ add_executable(${VISUAL_ODOMETRY}
 target_include_directories(${VISUAL_ODOMETRY} PRIVATE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(${VISUAL_ODOMETRY} PRIVATE ${OpenCV_LIBS})
 
+add_executable(main
+        test_pose_estimation.cpp PoseUpdate.cpp)
+
+add_executable(estimate_dataset
+        main.cpp PoseUpdate.cpp)
+
+target_link_libraries(main ${OpenCV_LIBS})
+target_link_libraries(estimate_dataset ${OpenCV_LIBS})
+
