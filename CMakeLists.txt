@@ -19,10 +19,10 @@ set(PROJECT_TEST_SERIAL_MATCHING serial_feature_extraction_with_matching)
 
 set(PRECOMPILE_THE_SOURCE precompile_the_source)
 
-set(VISUAL_ODOMETRY visual_odometry)
+#set(PROJECT_VISUAL_ODOMETRY visual_odometry)
 
 
-set(TEST_FEATURE_EXTRACTION test_feature_extraction)
+
 
 add_executable(${PROJECT_FEATURE_EXTRACTION_WITH_MATCHING}
         feature_extraction/test_feature_extraction.cpp
@@ -93,19 +93,23 @@ add_executable(${PRECOMPILE_THE_SOURCE}
 target_include_directories(${PRECOMPILE_THE_SOURCE} PRIVATE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(${PRECOMPILE_THE_SOURCE} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
 
+add_executable( VisualOdometry
 
-add_executable(${TEST_FEATURE_EXTRACTION} test_feature_extraction.cpp
-
-        # Thread pool implementation
-        feature_extraction_parallel/corner_detection_parallel.cpp
-        feature_extraction_parallel/FREAK_feature_descriptor_parallel.cpp
-        feature_extraction_parallel/feature_extraction_parallel.cpp
-
-        # GPU implementation
+        # FEATURE EXTRACTION
         feature_extraction_parallel_GPU/corner_detection_parallel_GPU.cpp
         feature_extraction_parallel_GPU/FREAK_feature_descriptor_parallel_GPU.cpp
         feature_extraction_parallel_GPU/feature_extraction_parallel_GPU.cpp
+
+        VisualOdometry.cpp
+
+        main.cpp
+
 )
+
+target_include_directories(VisualOdometry PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(VisualOdometry PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
+target_compile_definitions(VisualOdometry PRIVATE GPU_IMPLEMENTATION)
+
 
 
 
@@ -119,28 +123,28 @@ add_custom_target(run_precompile_kernel
 
 add_dependencies(${PROJECT_PARALLEL_FEATURE_EXTRACTION_GPU_WITH_MATCHING} run_precompile_kernel)
 
+add_dependencies(VisualOdometry run_precompile_kernel)
 
-add_dependencies(${TEST_FEATURE_EXTRACTION} run_precompile_kernel)
 
 find_package(OpenCL REQUIRED)
 
+#
+#add_executable(${VISUAL_ODOMETRY}
+#        feature_extraction_parallel/corner_detection_parallel.cpp
+#        feature_extraction_parallel/FREAK_feature_descriptor_parallel.cpp
+#        feature_extraction_parallel/feature_extraction_parallel.cpp
+#        feature_matching_parallel/feature_matching_parallel.cpp
+#        VisualOdometry.cpp)
+#
+#target_include_directories(${VISUAL_ODOMETRY} PRIVATE ${OpenCV_INCLUDE_DIRS})
+#target_link_libraries(${VISUAL_ODOMETRY} PRIVATE ${OpenCV_LIBS})
 
-add_executable(${VISUAL_ODOMETRY}
-        feature_extraction_parallel/corner_detection_parallel.cpp
-        feature_extraction_parallel/FREAK_feature_descriptor_parallel.cpp
-        feature_extraction_parallel/feature_extraction_parallel.cpp
-        feature_matching_parallel/feature_matching_parallel.cpp
-        VisualOdometry.cpp)
-
-target_include_directories(${VISUAL_ODOMETRY} PRIVATE ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(${VISUAL_ODOMETRY} PRIVATE ${OpenCV_LIBS})
-
-add_executable(main
-        test_pose_estimation.cpp PoseUpdate.cpp)
-
-add_executable(estimate_dataset
-        main.cpp PoseUpdate.cpp)
-
-target_link_libraries(main ${OpenCV_LIBS})
-target_link_libraries(estimate_dataset ${OpenCV_LIBS})
+#add_executable(main
+#        test_pose_estimation.cpp PoseUpdate.cpp)
+#
+#add_executable(estimate_dataset
+#        main.cpp PoseUpdate.cpp)
+#
+#target_link_libraries(main ${OpenCV_LIBS})
+#target_link_libraries(estimate_dataset ${OpenCV_LIBS})
 
