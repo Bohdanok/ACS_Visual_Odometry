@@ -18,7 +18,7 @@
 // Forward declaration
 class thread_pool;
 
-constexpr int BINARY_DESCRIPTOR_SIZE = 32;
+constexpr int BINARY_DESCRIPTOR_SIZE = 512;
 constexpr double MATCH_THRESHOLD = 0.5;
 
 

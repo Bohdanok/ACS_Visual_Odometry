@@ -15,6 +15,8 @@
 #include <optional>
 #include <opencv2/features2d.hpp>
 #include <opencv2/xfeatures2d.hpp>
+#include <arm_neon.h>
+
 
 
 // #ifdef PARALLEL_IMPLEMENTATION
@@ -43,12 +45,12 @@ inline int hammingDistance(const uint8_t* d1, const uint8_t* d2) {
     const uint64_t* a = reinterpret_cast<const uint64_t*>(d1);
     const uint64_t* b = reinterpret_cast<const uint64_t*>(d2);
 
-    return __builtin_popcountll(a[0] ^ b[0]) +
-           __builtin_popcountll(a[1] ^ b[1]) +
-           __builtin_popcountll(a[2] ^ b[2]) +
-           __builtin_popcountll(a[3] ^ b[3]);
+    int dist = 0;
+    for (int i = 0; i < 64; ++i) {
+        dist += __builtin_popcountll(a[i] ^ b[i]);
+    }
+    return dist;
 }
-
 
 std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
     const std::vector<std::vector<uint8_t>>& desc1,
@@ -70,6 +72,7 @@ std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
         size_t startIdx = t * chunkSize;
         size_t endIdx = std::min(startIdx + chunkSize, total);
         if (startIdx >= total) break;
+        constexpr int INF = std::numeric_limits<int>::max();
 
         futures.emplace_back(pool.submit([&, startIdx, endIdx]() {
             std::vector<std::pair<int, int>> localMatches;
@@ -77,17 +80,19 @@ std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
 
             for (size_t i = startIdx; i < endIdx; ++i) {
                 int bestIdx = -1, secondBestIdx = -1;
-                int bestDist = std::numeric_limits<int>::max();
-                int secondBestDist = std::numeric_limits<int>::max();
+                int bestDist = INF;
+                int secondBestDist = INF;
 
                 for (size_t j = 0; j < desc2.size(); ++j) {
                     int dist = hammingDistance(desc1[i].data(), desc2[j].data());
+                    if (dist >= secondBestDist) continue;
                     if (dist < bestDist) {
                         secondBestDist = bestDist;
                         secondBestIdx = bestIdx;
                         bestDist = dist;
                         bestIdx = j;
-                    } else if (dist < secondBestDist) {
+                    }
+                    else if (dist < secondBestDist) {
                         secondBestDist = dist;
                         secondBestIdx = j;
                     }
