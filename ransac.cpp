@@ -1,11 +1,10 @@
 #include <iostream>
 #include <vector>
 #include <Eigen/Dense>
-#include <random>
 #include <algorithm>
-#include <opencv2/opencv.hpp>
-#include <opencv2/features2d.hpp>
-#include <opencv2/xfeatures2d.hpp>
+#include <future>
+#include <mutex>
+#include <random>
 
 struct Point {
     double x, y;
@@ -14,6 +13,7 @@ struct Point {
 class FundamentalMatrix {
 private:
     Eigen::Matrix3d F;
+    std::vector<std::pair<Point, Point>> inliers;
 
     static Eigen::Matrix3d computeFundamentalMatrix(std::vector<std::pair<Point, Point>> points) {
         Eigen::Matrix3d T1, T2;
@@ -44,9 +44,6 @@ private:
         singularValues(2) = 0;
         F = svdF.matrixU() * singularValues.asDiagonal() * svdF.matrixV().transpose();
 
-        Eigen::JacobiSVD<Eigen::Matrix3d> checkSVD(F, Eigen::ComputeFullU | Eigen::ComputeFullV);
-        std::cout << "Singular values of final F: " << checkSVD.singularValues().transpose() << std::endl;
-
         return F;
     }
 
@@ -68,11 +65,12 @@ private:
 
         double scale1 = 0, scale2 = 0;
         for (const auto& p : points) {
-            scale1 += std::sqrt(std::pow(p.first.x - meanX1, 2) + std::pow(p.first.y - meanY1, 2));
-            scale2 += std::sqrt(std::pow(p.second.x - meanX2, 2) + std::pow(p.second.y - meanY2, 2));
+            scale1 += std::pow(p.first.x - meanX1, 2) + std::pow(p.first.y - meanY1, 2);
+            scale2 += std::pow(p.second.x - meanX2, 2) + std::pow(p.second.y - meanY2, 2);
         }
-        scale1 = std::sqrt(2) / (scale1 / points.size());
-        scale2 = std::sqrt(2) / (scale2 / points.size());
+        scale1 = std::sqrt(2) / std::sqrt(scale1 / points.size());
+        scale2 = std::sqrt(2) / std::sqrt(scale2 / points.size());
+
 
         T1 << scale1, 0, -scale1 * meanX1,
               0, scale1, -scale1 * meanY1,
@@ -91,6 +89,7 @@ public:
     void fit(const std::vector<std::pair<Point, Point>>& sample) {
         if (sample.size() < 8) return;
         F = computeFundamentalMatrix(sample);
+        inliers = sample;
     }
 
     Eigen::Matrix3d getMatrix() const {
@@ -108,8 +107,8 @@ public:
         return inliers;
     }
 
-    void print() const {
-        std::cout << "Fundamental Matrix:\n" << F << std::endl;
+    const std::vector<std::pair<Point, Point>>& getInliers() const {
+        return inliers;
     }
 };
 
@@ -122,16 +121,18 @@ double computeSampsonError(const Eigen::Matrix3d& F,
     double numerator = std::pow(x_prime.transpose() * F * x, 2);
     double denominator = Fx(0) * Fx(0) + Fx(1) * Fx(1) + Ftx(0) * Ftx(0) + Ftx(1) * Ftx(1);
 
-    if (denominator < 1e-12) return std::numeric_limits<double>::max(); // Avoid division by zero
+    if (denominator < 1e-12) return std::numeric_limits<double>::max();
     return numerator / denominator;
 }
 
-class Ransac {
+class Ransac
+{
 public:
-    static void run(FundamentalMatrix& model,
-                    const std::vector<std::pair<Point, Point>>& data,
-                    double probability,
-                    double sampsonThreshold) {
+    void run(FundamentalMatrix& model,
+                const std::vector<std::pair<Point, Point>>& data,
+                double probability,
+                double sampsonThreshold) {
+        int actualIterations = 0;
         int N = data.size();
         int sampleSize = 8;
         double outlierRatio = 0.5;
@@ -143,25 +144,48 @@ public:
 
         std::mt19937 rng(std::random_device{}());
 
+        long long totalSampleTime = 0;
+        long long totalModelTime = 0;
+        long long totalInlierTime = 0;
+
         for (int iter = 0; iter < maxIterations; ++iter) {
+            ++actualIterations;
             std::vector<std::pair<Point, Point>> sample;
-            std::sample(data.begin(), data.end(), std::back_inserter(sample),
-                        sampleSize, rng);
+            std::sample(data.begin(), data.end(), std::back_inserter(sample), sampleSize, rng);
 
             FundamentalMatrix tempModel;
             tempModel.fit(sample);
+
             Eigen::Matrix3d F = tempModel.getMatrix();
 
+            std::mutex inlierMutex;
             std::vector<std::pair<Point, Point>> currentInliers;
-            for (const auto& pair : data) {
-                Eigen::Vector3d x(pair.first.x, pair.first.y, 1.0);
-                Eigen::Vector3d x_prime(pair.second.x, pair.second.y, 1.0);
 
-                double error = computeSampsonError(F, x, x_prime);
-                if (error < sampsonThreshold) {
-                    currentInliers.push_back(pair);
-                }
+            int numThreads = std::thread::hardware_concurrency();
+            int chunkSize = data.size() / numThreads;
+            std::vector<std::future<void>> futures;
+
+            for (int t = 0; t < numThreads; ++t) {
+                int start = t * chunkSize;
+                int end = (t == numThreads - 1) ? data.size() : (t + 1) * chunkSize;
+
+                futures.emplace_back(std::async(std::launch::async, [&, start, end]() {
+                    std::vector<std::pair<Point, Point>> localInliers;
+                    for (int i = start; i < end; ++i) {
+                        const auto& pair = data[i];
+                        Eigen::Vector3d x(pair.first.x, pair.first.y, 1.0);
+                        Eigen::Vector3d x_prime(pair.second.x, pair.second.y, 1.0);
+
+                        double error = computeSampsonError(F, x, x_prime);
+                        if (error < sampsonThreshold) {
+                            localInliers.emplace_back(pair);
+                        }
+                    }
+                    std::lock_guard<std::mutex> lock(inlierMutex);
+                    currentInliers.insert(currentInliers.end(), localInliers.begin(), localInliers.end());
+                }));
             }
+            for (auto& f : futures) f.get();
 
             if (currentInliers.size() > bestInliers) {
                 bestInliers = currentInliers.size();
@@ -177,125 +201,6 @@ public:
             }
         }
 
-        std::cout << "Best Sampson inliers: " << bestInliers << " / " << N << std::endl;
-
         model.fit(bestInlierSet);
-        model.print();
     }
 };
-
-//for testing
-
-int hammingDistance(const uint8_t* d1, const uint8_t* d2, int length) {
-    int distance = 0;
-    int i = 0;
-
-    for (; i + 4 <= length; i += 4) {
-        uint32_t v1, v2;
-        std::memcpy(&v1, d1 + i, sizeof(uint32_t));
-        std::memcpy(&v2, d2 + i, sizeof(uint32_t));
-        distance += __builtin_popcount(v1 ^ v2);
-    }
-
-    for (; i < length; ++i) {
-        distance += __builtin_popcount(d1[i] ^ d2[i]);
-    }
-
-    return distance;
-}
-
-    std::vector<std::pair<int, int>> matchBinaryKeypoints(
-    const cv::Mat& descriptors1,
-    const cv::Mat& descriptors2,
-    float ratioThreshold = 0.75f)
-{
-    std::vector<std::pair<int, int>> pointMatches;
-    for (int i = 0; i < descriptors1.rows; ++i) {
-        int bestIdx = -1, secondBestIdx = -1;
-        int bestDist = std::numeric_limits<int>::max();
-        int secondBestDist = std::numeric_limits<int>::max();
-        const uint8_t* desc1 = descriptors1.ptr<uint8_t>(i);
-
-        for (int j = 0; j < descriptors2.rows; ++j) {
-            const uint8_t* desc2 = descriptors2.ptr<uint8_t>(j);
-            int dist = hammingDistance(desc1, desc2, descriptors1.cols);
-
-            if (dist < bestDist) {
-                secondBestDist = bestDist;
-                secondBestIdx = bestIdx;
-                bestDist = dist;
-                bestIdx = j;
-            } else if (dist < secondBestDist) {
-                secondBestDist = dist;
-                secondBestIdx = j;
-            }
-        }
-
-        if (bestIdx != -1 && secondBestIdx != -1 && bestDist < ratioThreshold * secondBestDist) {
-            pointMatches.emplace_back(i, bestIdx);
-        }
-    }
-    return pointMatches;
-}
-
-int checkRank(const Eigen::MatrixXd& matrix) {
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd(matrix, Eigen::ComputeFullU | Eigen::ComputeFullV);
-    Eigen::VectorXd singularValues = svd.singularValues();
-    int rank = (singularValues.array() > 1e-10).count();
-    std::cout << "Singular values: " << singularValues.transpose() << std::endl;
-    std::cout << "Rank of the matrix: " << rank << std::endl;
-
-    return rank;
-}
-
-int main() {
-    cv::Mat img1 = cv::imread("/Users/ostappavlyshyn/CLionProjects/ransac/first.png", cv::IMREAD_GRAYSCALE);
-    cv::Mat img2 = cv::imread("/Users/ostappavlyshyn/CLionProjects/ransac/second.png", cv::IMREAD_GRAYSCALE);
-
-    cv::Ptr<cv::BRISK> brisk = cv::BRISK::create();
-
-    std::vector<cv::KeyPoint> briskKps1, briskKps2;
-    cv::Mat briskDesc1, briskDesc2;
-
-    brisk->detectAndCompute(img1, cv::noArray(), briskKps1, briskDesc1);
-    brisk->detectAndCompute(img2, cv::noArray(), briskKps2, briskDesc2);
-
-    auto matches = matchBinaryKeypoints(briskDesc1, briskDesc2);
-
-    std::vector<std::pair<Point, Point>> matchedPoints;
-    for (const auto& match : matches) {
-        Point p1 = {briskKps1[match.first].pt.x, briskKps1[match.first].pt.y};
-        Point p2 = {briskKps2[match.second].pt.x, briskKps2[match.second].pt.y};
-
-        matchedPoints.push_back({p1, p2});
-    }
-
-    FundamentalMatrix fundamentalModel;
-    Ransac::run(fundamentalModel, matchedPoints, 0.99, 1.0);
-
-    int sampsonInliers = 0;
-    int sampsonOutliers = 0;
-    double sampsonThreshold = 1.0;
-
-    Eigen::Matrix3d F = fundamentalModel.getMatrix();
-
-    for (const auto& pair : matchedPoints) {
-        Eigen::Vector3d x(pair.first.x, pair.first.y, 1.0);
-        Eigen::Vector3d x_prime(pair.second.x, pair.second.y, 1.0);
-
-        double error = computeSampsonError(F, x, x_prime);
-        if (error < sampsonThreshold) {
-            ++sampsonInliers;
-        } else {
-            ++sampsonOutliers;
-        }
-    }
-
-    std::cout << "Sampson error inliers: " << sampsonInliers << std::endl;
-    std::cout << "Sampson error outliers: " << sampsonOutliers << std::endl;
-
-    int rank = checkRank(fundamentalModel.getMatrix());
-    std::cout << "Rank of F: " << rank << std::endl;
-
-    return 0;
-}
