@@ -96,6 +96,8 @@ add_executable(${PRECOMPILE_THE_SOURCE}
 target_include_directories(${PRECOMPILE_THE_SOURCE} PRIVATE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(${PRECOMPILE_THE_SOURCE} PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
 
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+
 add_executable( VisualOdometry
 
         # FEATURE EXTRACTION
@@ -107,14 +109,14 @@ add_executable( VisualOdometry
 
         VisualOdometry.cpp
         PoseUpdate.cpp
-
+        ransac.cpp
 
         main_pipeline.cpp
 
 )
 
 target_include_directories(VisualOdometry PRIVATE ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(VisualOdometry PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
+target_link_libraries(VisualOdometry PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL Eigen3::Eigen)
 target_compile_definitions(VisualOdometry PRIVATE GPU_IMPLEMENTATION)
 
 

@@ -33,10 +33,11 @@ double computeSampsonError(const Eigen::Matrix3d& F,
 
 class Ransac {
 public:
-    void run(FundamentalMatrix& model,
+    static void run(FundamentalMatrix& model,
              const std::vector<std::pair<Point, Point>>& data,
              double probability,
-             double sampsonThreshold);
+             double sampsonThreshold,
+             int numThreads);
 };
 
 #endif

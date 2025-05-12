@@ -104,17 +104,39 @@ void VisualOdometry::run(const std::string image_dir, const size_t num_images, c
             pts2.push_back(kpts2[idx2].pt);
         }
 
-        std::vector<uchar> inliers;
-        cv::Mat F = cv::findFundamentalMat(pts1, pts2, cv::FM_RANSAC, 1, 0.99, inliers);
-        if (F.empty()) {
-            std::cerr << "Fundamental matrix failed at frame " << i << "\n";
-            estimated_poses.push_back(T_curr.clone());
-            ++skipped_frames;
-            ++i;
-            continue;
+        std::vector<std::pair<Point, Point>> matchedPoints;
+        for (size_t i = 0; i < pts1.size(); ++i) {
+            matchedPoints.emplace_back(
+                Point{static_cast<double>(pts1[i].x), static_cast<double>(pts1[i].y)},
+                Point{static_cast<double>(pts2[i].x), static_cast<double>(pts2[i].y)}
+            );
         }
 
-        int inlier_count = std::count(inliers.begin(), inliers.end(), 1);
+        FundamentalMatrix model;
+        Ransac::run(model, matchedPoints, 0.99, 1.0, number_of_threads);
+
+        Eigen::Matrix3d F_eigen = model.getMatrix();
+
+        cv::Mat F(3, 3, CV_64F);
+        for (int i = 0; i < 3; ++i)
+            for (int j = 0; j < 3; ++j)
+                F.at<double>(i, j) = F_eigen(i, j);
+
+        const auto& inliers = model.getInliers();
+        int inlier_count = inliers.size();
+
+
+        // std::vector<uchar> inliers;
+        // cv::Mat F = cv::findFundamentalMat(pts1, pts2, cv::FM_RANSAC, 1, 0.99, inliers);
+        // if (F.empty()) {
+        //     std::cerr << "Fundamental matrix failed at frame " << i << "\n";
+        //     estimated_poses.push_back(T_curr.clone());
+        //     ++skipped_frames;
+        //     ++i;
+        //     continue;
+        // }
+
+        // int inlier_count = std::count(inliers.begin(), inliers.end(), 1);
         std::cout << "Number of inliers: " << inlier_count << "\n" << std::endl;
         double inlier_ratio = static_cast<double>(inlier_count) / match_indices.size();
 
@@ -133,12 +155,19 @@ void VisualOdometry::run(const std::string image_dir, const size_t num_images, c
         skipped_frames = 0;
 
         std::vector<cv::Point2f> inlier_pts1, inlier_pts2;
-        for (size_t j = 0; j < inliers.size(); ++j) {
-            if (inliers[j]) {
-                inlier_pts1.push_back(pts1[j]);
-                inlier_pts2.push_back(pts2[j]);
-            }
+        for (const auto& p : inliers) {
+            inlier_pts1.emplace_back(p.first.x, p.first.y);
+            inlier_pts2.emplace_back(p.second.x, p.second.y);
         }
+
+        //
+        // std::vector<cv::Point2f> inlier_pts1, inlier_pts2;
+        // for (size_t j = 0; j < inliers.size(); ++j) {
+        //     if (inliers[j]) {
+        //         inlier_pts1.push_back(pts1[j]);
+        //         inlier_pts2.push_back(pts2[j]);
+        //     }
+        // }
 
         // std::cout << gt_poses[i] << std::endl;
         cv::Mat T_rel_gt = gt_poses[i].inv() * gt_poses[last_valid_frame];

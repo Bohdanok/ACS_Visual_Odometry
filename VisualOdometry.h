@@ -9,6 +9,7 @@
 #include "feature_extraction_parallel_GPU/feature_extraction_parallel_GPU.h"
 #include "feature_matching_parallel/feature_matching_parallel.h"
 #include "PoseUpdate.hpp"
+#include "ransac.hpp"
 
 class VisualOdometry {
 private:
