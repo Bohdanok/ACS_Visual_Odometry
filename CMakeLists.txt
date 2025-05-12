@@ -106,8 +106,10 @@ add_executable( VisualOdometry
         feature_matching_parallel/feature_matching_parallel.cpp
 
         VisualOdometry.cpp
+        PoseUpdate.cpp
 
-        main.cpp
+
+        main_pipeline.cpp
 
 )
 
@@ -116,7 +118,10 @@ target_link_libraries(VisualOdometry PRIVATE ${OpenCV_LIBS} OpenCL::OpenCL)
 target_compile_definitions(VisualOdometry PRIVATE GPU_IMPLEMENTATION)
 
 
+add_executable( VisualOdometryOpenCV main.cpp)
 
+target_include_directories(VisualOdometryOpenCV PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(VisualOdometryOpenCV PRIVATE ${OpenCV_LIBS})
 
 
 add_custom_target(run_precompile_kernel
@@ -132,6 +137,8 @@ add_dependencies(VisualOdometry run_precompile_kernel)
 
 
 find_package(OpenCL REQUIRED)
+
+
 
 #
 #add_executable(${VISUAL_ODOMETRY}

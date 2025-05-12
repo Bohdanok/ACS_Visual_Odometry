@@ -21,6 +21,12 @@ class thread_pool;
 constexpr int BINARY_DESCRIPTOR_SIZE = 512;
 constexpr double MATCH_THRESHOLD = 0.5;
 
+struct PairHash {
+    std::size_t operator()(const std::pair<int, int>& p) const {
+        return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 1);
+    }
+};
+
 
 inline std::chrono::high_resolution_clock::time_point get_current_time_fenced();
 
@@ -33,10 +39,6 @@ std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
     int numThreads,
     float ratioThreshold
 );
-
-struct PairHash {
-    std::size_t operator()(const std::pair<int, int>& p) const;
-};
 
 std::vector<std::pair<int, int>> findCommonMatches(
     const std::vector<std::pair<int, int>>& customMatches,

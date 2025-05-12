@@ -15,7 +15,6 @@
 #include <optional>
 #include <opencv2/features2d.hpp>
 #include <opencv2/xfeatures2d.hpp>
-#include <arm_neon.h>
 
 
 
@@ -27,10 +26,6 @@
 //
 
 // #define VISUALIZATION
-
-std::size_t PairHash::operator()(const std::pair<int, int>& p) const {
-    return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 1);
-}
 
 inline std::chrono::high_resolution_clock::time_point
 get_current_time_fenced()
