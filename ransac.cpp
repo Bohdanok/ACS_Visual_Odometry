@@ -131,7 +131,8 @@ public:
     void run(FundamentalMatrix& model,
                 const std::vector<std::pair<Point, Point>>& data,
                 double probability,
-                double sampsonThreshold) {
+                double sampsonThreshold,
+                int numThreads) {
         int actualIterations = 0;
         int N = data.size();
         int sampleSize = 8;
@@ -161,7 +162,6 @@ public:
             std::mutex inlierMutex;
             std::vector<std::pair<Point, Point>> currentInliers;
 
-            int numThreads = std::thread::hardware_concurrency();
             int chunkSize = data.size() / numThreads;
             std::vector<std::future<void>> futures;
 
