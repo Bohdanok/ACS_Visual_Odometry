@@ -69,7 +69,7 @@ add_executable(${PROJECT_TEST_SERIAL_MATCHING}
         feature_extraction/test_feature_extraction.cpp
         feature_extraction/corner_detection.cpp
         feature_extraction/FREAK_feature_descriptor.cpp
-        matching_serial.cpp)
+        matching.cpp)
 
 target_include_directories(${PROJECT_TEST_SERIAL_MATCHING} PRIVATE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_TEST_SERIAL_MATCHING} PRIVATE ${OpenCV_LIBS})
@@ -132,6 +132,12 @@ add_dependencies(VisualOdometry run_precompile_kernel)
 
 
 find_package(OpenCL REQUIRED)
+
+#add_executable(opencv_feature_extraction
+#        opencv_feature_extraction.cpp
+#)
+#
+#target_link_libraries(opencv_feature_extraction ${OpenCV_LIBS})
 
 #
 #add_executable(${VISUAL_ODOMETRY}

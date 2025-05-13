@@ -83,9 +83,7 @@ int main(int argc, char** argv) {
     // std::cout << "Number of threads: " << NUMBER_OF_THREADS << std::endl;
     // std::cout << "Block size: " << BLOCK_SIZE << std::endl;
 
-#endif
-
-#ifdef GPU_IMPLEMENTATION
+#elif GPU_IMPLEMENTATION
     size_t NUMBER_OF_THREADS = 16;
     thread_pool pool1(NUMBER_OF_THREADS);
     const std::string kernel_filename = "/home/julfy1/Documents/4th_term/ACS/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.bin";
@@ -97,8 +95,11 @@ int main(int argc, char** argv) {
 
     const GPU_settings GPU_settings({program, device, context});
 
-
+#else
+    size_t NUMBER_OF_THREADS = 16;
+    thread_pool pool1(NUMBER_OF_THREADS);
 #endif
+
 
 
     // std::vector<std::vector<uint8_t>> descs1 = descriptor_for_s_pop(argv[1]);
