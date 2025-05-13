@@ -40,11 +40,10 @@ inline int hammingDistance(const uint8_t* d1, const uint8_t* d2) {
     const uint64_t* a = reinterpret_cast<const uint64_t*>(d1);
     const uint64_t* b = reinterpret_cast<const uint64_t*>(d2);
 
-    int dist = 0;
-    for (int i = 0; i < 64; ++i) {
-        dist += __builtin_popcountll(a[i] ^ b[i]);
-    }
-    return dist;
+    return __builtin_popcountll(a[0] ^ b[0]) +
+           __builtin_popcountll(a[1] ^ b[1]) +
+           __builtin_popcountll(a[2] ^ b[2]) +
+           __builtin_popcountll(a[3] ^ b[3]);
 }
 
 std::vector<std::pair<int, int>> matchCustomBinaryDescriptorsThreadPool(
