@@ -56,7 +56,6 @@ make VisualOdometry
 - Run (from the root of the directory)
     ```
   ./build/VisualOdometry {NUMBER_OF_THREADS} {PATH_TO_THE_SEQUENCE} {NUMBER_OF_SEQUENCE_IMAGES} {PATH_TO_THE_GROUND_TRUTH_FILE} {PATH_TO_ESTIMATED_POSES.csv}
-
     ```
 - Run in MATLAB (for pose estimation plot)
     ```
@@ -74,4 +73,8 @@ Motion estimation is performed by computing the fundamental matrix via RANSAC to
 Parallelization is introduced at the feature extraction and feature matching stages. A thread pool implementation ensures concurrent processing of image data while maintaining synchronization and avoiding data races. This significantly improves performance on high-resolution inputs.
 
 Feature description uses GPU acceleration with $\textbf{OpenCL}$
+
+**Visualization**
+
+[Watch the demo video](ACS_estimated_poses.mp4)
 
