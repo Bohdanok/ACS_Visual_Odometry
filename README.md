@@ -76,5 +76,5 @@ Feature description uses GPU acceleration with $\textbf{OpenCL}$
 
 **Visualization**
 
-[Watch the demo video](ACS_estimated_poses.mp4)
+[Watch the demo video](ACS_estimated_poses(1).mp4)
 
