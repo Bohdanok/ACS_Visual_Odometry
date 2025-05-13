@@ -49,7 +49,7 @@ make VisualOdometry
 ```
 **Usage**
 
-- Download the test dataset https://www.cvlibs.net/datasets/kitti/eval_odometry.php}
+- Download the test dataset https://www.cvlibs.net/datasets/kitti/eval_odometry.php
 
 - Compile the program
 
@@ -60,7 +60,7 @@ make VisualOdometry
     ```
 - Run in MATLAB (for pose estimation plot)
     ```
-    
+    matlab -nojvm -nodisplay -nodesktop -batch "plot_trajectory({PATH_TO_ESTIMATED_POSES.csv}, {PATH_TO_ESTIMATED_POSES.csv}, {PATH_TO_OUTPUT_VIDEO.avi})"
     ```
 
 **Results**

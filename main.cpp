@@ -61,22 +61,24 @@ std::vector<cv::KeyPoint> convertToKeypoints(const std::vector<cv::Point2f>& cor
      return keypoints;
  }
 
- int main() {
-     // std::string image_dir = "/mnt/d/pok/project_directory/ACS_Visual_Odometry/data/data/sequences/images_5/";
-     // // std::size_t num_images = 500;
-     // std::string pose_file = "/mnt/d/pok/project_directory/ACS_Visual_Odometry/data/data/poses/05.txt";
-     // std::string output_csv = "/mnt/d/pok/project_directory/ACS_Visual_Odometry/estimated_poses_opencv_5.csv";
+ int main(int argc, char* argv[]) {
 
-     std::string kernel_file = "../kernels/feature_extraction_kernel_functions.bin";
-     std::size_t num_threads = 16;
+     if (argc != 5) {
+         std::cerr << "Usage: " << argv[0]
+                   << " <image_dir> <num_images> <pose_file> <output_csv>" << std::endl;
+         return EXIT_FAILURE;
+     }
 
-     std::string image_dir = "../images_5/";
-     std::size_t num_images = 1500;
-     std::string pose_file = "../05.txt";
-     std::string output_csv = "../estimated_poses_our.csv";
-
-     auto start = get_current_time_fenced();
-
+     std::string image_dir = argv[1];
+     std::size_t num_images = 0;
+     try {
+         num_images = static_cast<std::size_t>(std::stoul(argv[2]));
+     } catch (const std::exception& e) {
+         std::cerr << "Invalid num_images: " << argv[2] << std::endl;
+         return EXIT_FAILURE;
+     }
+     std::string pose_file = argv[3];
+     std::string output_csv = argv[4];
 
      const double fx = 7.188560000000e+02;
      const double fy = 7.188560000000e+02;
@@ -197,7 +199,7 @@ std::vector<cv::KeyPoint> convertToKeypoints(const std::vector<cv::Point2f>& cor
 //         hist << inlier_ratio << "\n";
 
          if (inlier_ratio < 0.5 && skipped_frames < 3) {
-             // std::cout << "Skipping frame " << i << " due to low inlier ratio: " << inlier_ratio << "\n";
+             //std::cout << "Skipping frame " << i << " due to low inlier ratio: " << inlier_ratio << "\n";
              cv::Mat T_curr_flipped = flipZ * T_curr;
              estimated_poses.push_back(T_curr_flipped.clone());
              ++skipped_frames;
@@ -249,12 +251,6 @@ std::vector<cv::KeyPoint> convertToKeypoints(const std::vector<cv::Point2f>& cor
 
      writePoseCSV(output_csv, estimated_poses);
      std::cout << "Wrote estimated poses to: " << output_csv << "\n";
-
-     auto end = get_current_time_fenced();
-
-     std::cout << "Time for the dataset pose estimation: "
-               << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-               << " ms for " << num_images << " images" << std::endl;
 
      return 0;
  }
