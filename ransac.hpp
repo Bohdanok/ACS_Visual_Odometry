@@ -1,9 +1,15 @@
-#ifndef ransac_hpp
-#define ransac_hpp
+#ifndef FUNDAMENTAL_MATRIX_RANSAC_HPP
+#define FUNDAMENTAL_MATRIX_RANSAC_HPP
 
 #include <Eigen/Dense>
 #include <vector>
 #include <utility>
+#include <chrono>
+#include <limits>
+#include <random>
+#include <mutex>
+#include <future>
+#include "feature_extraction_parallel_GPU/threadpool.h"
 
 struct Point {
     double x, y;
@@ -33,11 +39,12 @@ double computeSampsonError(const Eigen::Matrix3d& F,
 
 class Ransac {
 public:
-    static void run(FundamentalMatrix& model,
+    void run(FundamentalMatrix& model,
              const std::vector<std::pair<Point, Point>>& data,
              double probability,
              double sampsonThreshold,
-             int numThreads);
+             int numThreads,
+             thread_pool& pool);
 };
 
-#endif
+#endif // FUNDAMENTAL_MATRIX_RANSAC_HPP

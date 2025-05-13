@@ -25,6 +25,15 @@
      return T;
  }
 
+inline std::chrono::high_resolution_clock::time_point
+get_current_time_fenced()
+ {
+     std::atomic_thread_fence(std::memory_order_seq_cst);
+     auto res_time = std::chrono::high_resolution_clock::now();
+     std::atomic_thread_fence(std::memory_order_seq_cst);
+     return res_time;
+ }
+
  void writePoseCSV(const std::string &filename, const std::vector<cv::Mat> &poses) {
      std::ofstream file(filename);
      if (!file.is_open()) {
@@ -126,7 +135,7 @@ std::vector<cv::KeyPoint> convertToKeypoints(const std::vector<cv::Point2f>& cor
      freak->compute(img1, kpts1, desc1);
 
      while (i < num_images) {
-         std::cout << "Processing frame " << i << std::endl;
+         // std::cout << "Processing frame " << i << std::endl;
          std::stringstream ss1, ss2;
 //         ss1 << std::setw(6) << std::setfill('0') << (last_valid_frame);
          ss2 << std::setw(6) << std::setfill('0') << i;
@@ -190,7 +199,7 @@ std::vector<cv::KeyPoint> convertToKeypoints(const std::vector<cv::Point2f>& cor
 //         hist << inlier_ratio << "\n";
 
          if (inlier_ratio < 0.5 && skipped_frames < 3) {
-             std::cout << "Skipping frame " << i << " due to low inlier ratio: " << inlier_ratio << "\n";
+             //std::cout << "Skipping frame " << i << " due to low inlier ratio: " << inlier_ratio << "\n";
              cv::Mat T_curr_flipped = flipZ * T_curr;
              estimated_poses.push_back(T_curr_flipped.clone());
              ++skipped_frames;
