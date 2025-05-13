@@ -8,6 +8,8 @@
 
 #include "feature_extraction_parallel_GPU/feature_extraction_parallel_GPU.h"
 #include "feature_matching_parallel/feature_matching_parallel.h"
+#include "PoseUpdate.hpp"
+#include "ransac.hpp"
 
 class VisualOdometry {
 private:
@@ -24,7 +26,7 @@ public:
     std::vector<std::pair<int, int>> match_descriptors(
         const std::vector<std::vector<uint8_t>>& desc1,
         const std::vector<std::vector<uint8_t>>& desc2);
-    void run(const std::string& image_directory, std::size_t num_of_runs);
+    void run(const std::string image_dir, size_t num_images, const std::string pose_file, const std::string output_csv);
 };
 
 #endif // VISUAL_ODOMETRY_H

@@ -22,7 +22,7 @@ get_current_time_fenced()
 }
 // #endif
 
-constexpr float RESPONSE_THRESHOLD = 25000;
+constexpr float RESPONSE_THRESHOLD = 20000;
 
 struct bound2d {
     int start{}, end{};

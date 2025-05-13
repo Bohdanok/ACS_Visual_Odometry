@@ -9,10 +9,45 @@
 #include <opencv2/calib3d.hpp>
 #include <cmath>
 #include <vector>
+#include <iostream>
+#include <iomanip>
+#include <fstream>
 
-using namespace cv;
+// using namespace cv;
+extern cv::Mat flipZ;
+
+namespace utils {
+    inline cv::Mat toHomogeneous(const cv::Mat& Praw) {
+        cv::Mat P3x4;
+        // якщо це вже 3×4 — беремо напряму
+        if (Praw.rows == 3 && Praw.cols == 4) {
+            P3x4 = Praw;
+        }
+        // якщо 1×12 або 12×1 — перетворюємо на 3×4
+        else if ((Praw.rows == 1 && Praw.cols == 12) ||
+                 (Praw.rows == 12 && Praw.cols == 1)) {
+            // reshape(new_channels, new_rows)
+            // нові рядки = 3 → тоді буде 3×4
+            P3x4 = Praw.reshape(1, 3);
+                 }
+        else {
+            CV_Error(cv::Error::StsBadArg,
+                     "toHomogeneous: очікував 3×4 або 1×12/12×1, а отримав " +
+                     std::to_string(Praw.rows) + "×" +
+                     std::to_string(Praw.cols));
+        }
+
+        // тепер точно 3×4 — збираємо 4×4
+        cv::Mat T = cv::Mat::eye(4, 4, P3x4.type());
+        P3x4.copyTo(T(cv::Range(0,3), cv::Range(0,4)));
+        return T;
+    }
+}
 
 cv::Vec3d rotationMatrixToEulerAngles(const cv::Mat &R);
+
+cv::Mat readGTLine(const std::string &line);
+void writePoseCSV(const std::string &filename, const std::vector<cv::Mat> &poses);
 
 class PoseUpdate
 {
@@ -133,6 +168,11 @@ public:
             t_final = t_candidate.clone();
         }
     }
+
+        if (maxPositiveDepth < 100)
+        {
+            std::cerr << "Max positive depth too small\n";
+        }
 
         // cv::Mat T_world = cv::Mat::eye(4, 4, CV_64F);
 

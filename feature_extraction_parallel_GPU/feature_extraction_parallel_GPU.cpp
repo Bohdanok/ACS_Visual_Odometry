@@ -232,7 +232,7 @@ std::pair<std::vector<std::vector<uint8_t>>, std::vector<cv::KeyPoint>> feature_
 // #ifdef INTERMEDIATE_TIME_MEASUREMENTS_GPU_WORK
 //     const auto start_nms = get_current_time_fenced();
 // #endif
-    auto local_mins_shitomasi = CornerDetectionParallel_GPU::non_maximum_suppression(R_score, n_rows, n_cols, 5, 1500);
+    auto local_mins_shitomasi = CornerDetectionParallel_GPU::non_maximum_suppression(R_score, n_rows, n_cols, 3, 2000);
     // cv::Mat new_image;
     // if (image.channels() == 1) cv::cvtColor(image, new_image, cv::COLOR_GRAY2BGR);
     //
