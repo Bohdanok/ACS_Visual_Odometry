@@ -49,7 +49,7 @@ make VisualOdometry
 ```
 **Usage**
 
-- Download the test dataset https://www.cvlibs.net/datasets/kitti/eval_odometry.php}
+- Download the test dataset https://www.cvlibs.net/datasets/kitti/eval_odometry.php
 
 - Compile the program
 
