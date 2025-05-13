@@ -60,7 +60,7 @@ make VisualOdometry
     ```
 - Run in MATLAB (for pose estimation plot)
     ```
-    
+    matlab -nojvm -nodisplay -nodesktop -batch "plot_trajectory({PATH_TO_ESTIMATED_POSES.csv}, {PATH_TO_ESTIMATED_POSES.csv}, {PATH_TO_OUTPUT_VIDEO.avi})"
     ```
 
 **Results**
