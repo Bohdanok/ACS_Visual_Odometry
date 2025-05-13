@@ -10,8 +10,10 @@ Visual odometry is a state estimation problem where the goal is to estimate the 
 C++17
 
 OpenCV 4.x
+OpenCL
+Eigen3
+MATLAB
 
-Eigen 3
 
 CMake ≥ 3.15
 
@@ -36,15 +38,15 @@ For additioan info visit https://www.intel.com/content/www/us/en/developer/tools
 **Compilation**
 
 For .csv file of pose estimation (on branch $\textit{main}$)
-
+```
 mkdir build
 
 cd build
 
 cmake ..
 
-make
-
+make VisualOdometry
+```
 **Usage**
 
 - Download the test dataset https://www.cvlibs.net/datasets/kitti/eval_odometry.php}
@@ -53,10 +55,10 @@ make
 
 - Run (from the root of the directory)
     ```
-  ./VisualOdometry {NUMBER_OF_THREADS} {PATH_TO_THE_SEQUENCE} {NUMBER_OF_SEQUENCE_IMAGES} {PATH_TO_THE_GROUND_TRUTH_FILE} {PATH_TO_ESTIMATED_POSES.csv}
+  ./build/VisualOdometry {NUMBER_OF_THREADS} {PATH_TO_THE_SEQUENCE} {NUMBER_OF_SEQUENCE_IMAGES} {PATH_TO_THE_GROUND_TRUTH_FILE} {PATH_TO_ESTIMATED_POSES.csv}
 
     ```
-- Run in MATLAB
+- Run in MATLAB (for pose estimation plot)
     ```
     
     ```
