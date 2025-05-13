@@ -64,7 +64,7 @@ void VisualOdometry::run(const std::string image_dir, const size_t num_images, c
     );
 
 
-    while (i < num_images) {
+    while (i < gt_poses.size()) {
         std::stringstream ss1, ss2;
 #ifdef PRINT_INTERMEDIATE_STEPS
         std::cout << "Frame number: " << i << std::endl;

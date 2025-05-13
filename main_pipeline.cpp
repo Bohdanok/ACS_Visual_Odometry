@@ -1,37 +1,43 @@
-//
-// Created by admin on 10.05.2025.
-//
-
 #include "VisualOdometry.h"
+#include <filesystem>
+#include <iostream>
+#include <string>
+#include <cstdlib>
 
-int main() {
-    // std::string kernel_file = "/mnt/d/pok/project_directory/ACS_Visual_Odometry/kernels/feature_extraction_kernel_functions.bin";
-    // std::size_t num_threads = 8;
-    //
-    // std::string image_dir = "/mnt/d/pok/project_directory/ACS_Visual_Odometry/data/data/sequences/images_5/";
-    // std::size_t num_images = 500;
-    // std::string pose_file = "/mnt/d/pok/project_directory/ACS_Visual_Odometry/data/data/poses/05.txt";
-    // std::string output_csv = "/mnt/d/pok/project_directory/ACS_Visual_Odometry/estimated_poses_our_5.csv";
+int main(int argc, char* argv[]) {
+    if (argc != 6) {
+        std::cerr << "Usage: " << argv[0]
+                  << " <num_threads> <image_dir> <num_images> <pose_file> <output_csv>" << std::endl;
+        return EXIT_FAILURE;
+    }
 
-    std::string kernel_file = "../kernels/feature_extraction_kernel_functions.bin";
-    std::size_t num_threads = 16;
+    std::size_t num_threads = 0;
+    try {
+        num_threads = static_cast<std::size_t>(std::stoul(argv[1]));
+    } catch (const std::exception& e) {
+        std::cerr << "Invalid num_threads: " << argv[1] << std::endl;
+        return EXIT_FAILURE;
+    }
+    std::string image_dir = argv[2];
+    std::size_t num_images = 0;
+    try {
+        num_images = static_cast<std::size_t>(std::stoul(argv[3]));
+    } catch (const std::exception& e) {
+        std::cerr << "Invalid num_images: " << argv[3] << std::endl;
+        return EXIT_FAILURE;
+    }
+    std::string pose_file = argv[4];
+    std::string output_csv = argv[5];
 
-    std::string image_dir = "../images_5/";
-    std::size_t num_images = 10;
-    std::string pose_file = "../05.txt";
-    std::string output_csv = "../estimated_poses_our.csv";
+    std::filesystem::path kernel_file = "../kernels/feature_extraction_kernel_functions.bin";
 
-    auto start = get_current_time_fenced();
+    if (!std::filesystem::exists(kernel_file)) {
+        std::cerr << "Kernel file not found: " << kernel_file << std::endl;
+        return EXIT_FAILURE;
+    }
 
-    VisualOdometry vo(kernel_file, num_threads);
-
+    VisualOdometry vo(kernel_file.string(), num_threads);
     vo.run(image_dir, num_images, pose_file, output_csv);
 
-    auto end = get_current_time_fenced();
-
-    std::cout << "Time for the dataset pose estimation: "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-              << " ms for " << num_images << " images" << std::endl;
-
-    return 0;
+    return EXIT_SUCCESS;
 }

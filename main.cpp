@@ -52,11 +52,24 @@ std::vector<cv::KeyPoint> convertToKeypoints(const std::vector<cv::Point2f>& cor
      return keypoints;
  }
 
- int main() {
-     std::string image_dir = "/mnt/d/pok/project_directory/ACS_Visual_Odometry/data/data/sequences/images_5/";
-     // std::size_t num_images = 500;
-     std::string pose_file = "/mnt/d/pok/project_directory/ACS_Visual_Odometry/data/data/poses/05.txt";
-     std::string output_csv = "/mnt/d/pok/project_directory/ACS_Visual_Odometry/estimated_poses_opencv_5.csv";
+ int main(int argc, char* argv[]) {
+
+     if (argc != 5) {
+         std::cerr << "Usage: " << argv[0]
+                   << " <image_dir> <num_images> <pose_file> <output_csv>" << std::endl;
+         return EXIT_FAILURE;
+     }
+
+     std::string image_dir = argv[1];
+     std::size_t num_images = 0;
+     try {
+         num_images = static_cast<std::size_t>(std::stoul(argv[2]));
+     } catch (const std::exception& e) {
+         std::cerr << "Invalid num_images: " << argv[2] << std::endl;
+         return EXIT_FAILURE;
+     }
+     std::string pose_file = argv[3];
+     std::string output_csv = argv[4];
 
      const double fx = 7.188560000000e+02;
      const double fy = 7.188560000000e+02;
@@ -112,7 +125,7 @@ std::vector<cv::KeyPoint> convertToKeypoints(const std::vector<cv::Point2f>& cor
 
      freak->compute(img1, kpts1, desc1);
 
-     while (i < gt_poses.size()) {
+     while (i < num_images) {
          std::cout << "Processing frame " << i << std::endl;
          std::stringstream ss1, ss2;
 //         ss1 << std::setw(6) << std::setfill('0') << (last_valid_frame);
