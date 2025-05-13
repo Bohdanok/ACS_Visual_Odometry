@@ -17,9 +17,25 @@ CMake ≥ 3.15
 
 POSIX-compatible thread support
 
+### Installation on Ubuntu 22.04
+
+```
+sudo apt update
+sudo apt install -y \
+    build-essential \
+    cmake \
+    libopencv-dev \
+    ocl-icd-opencl-dev \
+    libeigen3-dev \
+    clinfo
+```
+
+Install the needed OpenCL drivers for your GPU.
+For additioan info visit https://www.intel.com/content/www/us/en/developer/tools/opencl/run.html
+
 **Compilation**
 
-for feature extraction and matching (branch Bohdan_and_Sofia)
+For .csv file of pose estimation (on branch $\textit{main}$)
 
 mkdir build
 
@@ -30,15 +46,20 @@ cmake ..
 make
 
 **Usage**
-for feature extraction and matching 
 
-For the serial implementation:
+- Download the test dataset https://www.cvlibs.net/datasets/kitti/eval_odometry.php}
 
-./serial_feature_extraction_with_matching ../images/f1.png ../images/f2.png
+- Compile the program
 
-For the parallel implementation:
+- Run (from the root of the directory)
+    ```
+  ./VisualOdometry {NUMBER_OF_THREADS} {PATH_TO_THE_SEQUENCE} {NUMBER_OF_SEQUENCE_IMAGES} {PATH_TO_THE_GROUND_TRUTH_FILE} {PATH_TO_ESTIMATED_POSES.csv}
 
-parallel_feature_extraction_with_matching ../images/f1.png ../images/f2.png NUMBER_OF_THREADS BLOCKSIZE_FOR_TASKS_DECOMPOSITION
+    ```
+- Run in MATLAB
+    ```
+    
+    ```
 
 **Results**
 
@@ -49,3 +70,6 @@ Feature matching is done using a brute-force matcher. For binary descriptors, th
 Motion estimation is performed by computing the fundamental matrix via RANSAC to eliminate outliers. The estimation is refined before being used for pose updates.
 
 Parallelization is introduced at the feature extraction and feature matching stages. A thread pool implementation ensures concurrent processing of image data while maintaining synchronization and avoiding data races. This significantly improves performance on high-resolution inputs.
+
+Feature description uses GPU acceleration with $\textbf{OpenCL}$
+
