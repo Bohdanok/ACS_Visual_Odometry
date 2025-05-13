@@ -6,9 +6,8 @@
 #include <mutex>
 #include <random>
 #include "feature_extraction_parallel_GPU/threadpool.h"
-#include "ransac.hpp"  // Include the header file for the declarations
+#include "ransac.hpp"
 
-// No need to define Point or FundamentalMatrix again since they are in the header
 
 double computeSampsonError(const Eigen::Matrix3d& F,
                            const Eigen::Vector3d& x,
