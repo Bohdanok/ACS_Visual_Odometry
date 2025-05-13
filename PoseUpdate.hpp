@@ -1,9 +1,12 @@
 //
 // Created by admin on 13.04.2025.
 //
+#pragma once
+// #define PRINT_INTERMEDIATE_STEPS
 
 #ifndef POSEUPDATE_H
 #define POSEUPDATE_H
+
 
 #include <opencv2/core.hpp>
 #include <opencv2/calib3d.hpp>
@@ -16,33 +19,6 @@
 // using namespace cv;
 extern cv::Mat flipZ;
 
-namespace utils {
-    inline cv::Mat toHomogeneous(const cv::Mat& Praw) {
-        cv::Mat P3x4;
-        // якщо це вже 3×4 — беремо напряму
-        if (Praw.rows == 3 && Praw.cols == 4) {
-            P3x4 = Praw;
-        }
-        // якщо 1×12 або 12×1 — перетворюємо на 3×4
-        else if ((Praw.rows == 1 && Praw.cols == 12) ||
-                 (Praw.rows == 12 && Praw.cols == 1)) {
-            // reshape(new_channels, new_rows)
-            // нові рядки = 3 → тоді буде 3×4
-            P3x4 = Praw.reshape(1, 3);
-                 }
-        else {
-            CV_Error(cv::Error::StsBadArg,
-                     "toHomogeneous: очікував 3×4 або 1×12/12×1, а отримав " +
-                     std::to_string(Praw.rows) + "×" +
-                     std::to_string(Praw.cols));
-        }
-
-        // тепер точно 3×4 — збираємо 4×4
-        cv::Mat T = cv::Mat::eye(4, 4, P3x4.type());
-        P3x4.copyTo(T(cv::Range(0,3), cv::Range(0,4)));
-        return T;
-    }
-}
 
 cv::Vec3d rotationMatrixToEulerAngles(const cv::Mat &R);
 
@@ -98,8 +74,9 @@ public:
 
     cv::Mat U, S, Vt;
     cv::SVD::compute(E, S, U, Vt);
-
+#ifdef PRINT_INTERMEDIATE_STEPS
     std::cout << "Singular values of E: " << S.t() << std::endl;
+#endif
 
     if (cv::determinant(U) < 0) U *= -1;
     if (cv::determinant(Vt) < 0) Vt *= -1;
@@ -159,9 +136,9 @@ public:
 
             if (z1 > 0 && z2 > 0) countPositiveDepth++;
         }
-
+#ifdef PRINT_INTERMEDIATE_STEPS
         std::cout << "Candidate R, t:  " << countPositiveDepth << " inliers\n";
-
+#endif
         if (countPositiveDepth > maxPositiveDepth) {
             maxPositiveDepth = countPositiveDepth;
             R_final = R.clone();
@@ -178,8 +155,9 @@ public:
 
         if (cv::determinant(R_final) < 0)
             R_final = -R_final;
+#ifdef PRINT_INTERMEDIATE_STEPS
             std::cout << "\nChanged the sign\n" << std::endl;
-
+#endif
 
         // R_final.copyTo(T_world(cv::Rect(0, 0, 3, 3)));
 

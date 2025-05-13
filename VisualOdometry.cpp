@@ -4,6 +4,8 @@
 
 #include "VisualOdometry.h"
 
+// #define PRINT_INTERMEDIATE_STEPS
+
 VisualOdometry::VisualOdometry(
     const std::string& kernel_filename,
     const std::size_t num_threads)
@@ -62,10 +64,11 @@ void VisualOdometry::run(const std::string image_dir, const size_t num_images, c
     );
 
 
-    while (i < gt_poses.size()) {
+    while (i < num_images) {
         std::stringstream ss1, ss2;
-
+#ifdef PRINT_INTERMEDIATE_STEPS
         std::cout << "Frame number: " << i << std::endl;
+#endif
         // ss1 << std::setw(6) << std::setfill('0') << (last_valid_frame);
         ss2 << std::setw(6) << std::setfill('0') << i;
 
@@ -95,9 +98,9 @@ void VisualOdometry::run(const std::string image_dir, const size_t num_images, c
             ++i;
             continue;
         }
-
+#ifdef PRINT_INTERMEDIATE_STEPS
         std::cout << "Matched indexes number: " << match_indices.size() << std::endl;
-
+#endif
         std::vector<cv::Point2f> pts1, pts2;
         for (auto &[idx1, idx2] : match_indices) {
             pts1.push_back(kpts1[idx1].pt);
@@ -137,14 +140,18 @@ void VisualOdometry::run(const std::string image_dir, const size_t num_images, c
         // }
 
         // int inlier_count = std::count(inliers.begin(), inliers.end(), 1);
+#ifdef PRINT_INTERMEDIATE_STEPS
         std::cout << "Number of inliers: " << inlier_count << "\n" << std::endl;
+#endif
         double inlier_ratio = static_cast<double>(inlier_count) / match_indices.size();
 
         std::ofstream hist("inlier_ratios.txt", std::ios::app);
         hist << inlier_ratio << "\n";
 
         if (inlier_ratio < 0.5 && skipped_frames < 3) {
+#ifdef PRINT_INTERMEDIATE_STEPS
             std::cout << "Skipping frame " << i << " due to low inlier ratio: " << inlier_ratio << "\n";
+#endif
             cv::Mat T_curr_flipped = flipZ * T_curr;
             estimated_poses.push_back(T_curr_flipped.clone());
             ++skipped_frames;
